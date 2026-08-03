@@ -1,0 +1,19 @@
+{
+  "name": "urbanflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "UrbanFlow Mobility — plateforme de mobilité urbaine multimodale (PWA) pour Toulouse Métropole.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.3.0",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter web test:e2e",
+    "build": "pnpm -r build"
+  }
+}

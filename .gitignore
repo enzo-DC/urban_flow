@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+apps/web/.next/
+apps/web/out/
+apps/api/dist/
+packages/*/dist/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+
+# OpenTripPlanner data (volumineux, ne pas versionner)
+infra/otp/*.osm.pbf
+infra/otp/*.zip
+infra/otp/graph.obj
+
+# Tests / coverage
+coverage/
+playwright-report/
+test-results/
