@@ -1,0 +1,14 @@
+{
+  "routingDefaults": {
+    "numItineraries": 5
+  },
+  "updaters": [
+    {
+      "type": "vehicle-rental",
+      "sourceType": "gbfs",
+      "network": "velotoulouse",
+      "url": "https://api.cyclocity.fr/contracts/toulouse/gbfs/gbfs.json",
+      "frequencySec": 60
+    }
+  ]
+}
