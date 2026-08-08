@@ -4,6 +4,7 @@
 **/coverage
 **/.git
 **/.turbo
+**/.env
 infra/otp/*.osm.pbf
 infra/otp/*.zip
 infra/otp/graph.obj

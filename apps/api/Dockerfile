@@ -1,5 +1,7 @@
 # Contexte de build : la racine du monorepo (nécessaire pour pnpm workspace + packages/shared).
 FROM node:24-slim AS base
+# openssl : requis par le moteur Prisma (node:24-slim ne l'installe pas par defaut).
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /workspace
 
@@ -13,6 +15,7 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS build
 COPY packages/shared packages/shared
 COPY apps/api apps/api
+RUN pnpm --filter api exec prisma generate
 RUN pnpm --filter @urbanflow/shared build && pnpm --filter api build
 
 FROM base AS runner
@@ -25,4 +28,4 @@ COPY --from=build /workspace/packages/shared ./packages/shared
 COPY --from=build /workspace/apps/api ./apps/api
 WORKDIR /workspace/apps/api
 EXPOSE 3000
-CMD ["pnpm", "start:prod"]
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy && pnpm start:prod"]

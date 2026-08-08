@@ -5,6 +5,11 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+// Uniquement l'integration Prettier : a utiliser par les apps qui ont deja leur propre
+// config typescript-eslint (ex. Next), pour eviter un conflit "Cannot redefine plugin
+// @typescript-eslint" entre deux resolutions differentes du meme plugin.
+export const prettierConfig = [eslintPluginPrettierRecommended];
+
 const baseConfig = tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
