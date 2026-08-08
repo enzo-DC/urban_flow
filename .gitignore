@@ -27,6 +27,7 @@ Thumbs.db
 # OpenTripPlanner data (volumineux, ne pas versionner)
 infra/otp/*.osm.pbf
 infra/otp/*.zip
+infra/otp/*.jar
 infra/otp/graph.obj
 
 # Tests / coverage
