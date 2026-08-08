@@ -8,6 +8,12 @@ petite pour correspondre à **un commit**. Respecte les règles de @markdown/CLA
 Types utilisés ici : `feat`, `fix`, `chore`, `docs`, `test`, `ci`.
 Coche chaque case au fur et à mesure et reporte l'avancement dans `docs/avancement.md`.
 
+**Convention de branches** (à partir de la Phase 3) : une branche par feature, nommée
+`feat/<nom-de-la-feature>` (le nom correspond au champ **Feature** de chaque phase ci-dessous,
+ex. `feat/otp-engine`). Tous les commits de la phase y sont empilés dans l'ordre, la branche est
+fusionnée dans `main` une fois la DoD de la phase validée. Les phases 0-2 ont été faites
+directement sur `main` (avant cette convention) ; à partir de la Phase 3, chaque phase = 1 branche.
+
 ---
 
 ## Sprint S0 — Phase 0 : Prérequis
@@ -69,16 +75,62 @@ Coche chaque case au fur et à mesure et reporte l'avancement dans `docs/avancem
 
 ## Sprint S1 — Phase 3 : OpenTripPlanner *(risque technique prioritaire)*
 
-**Feature : `otp-engine`**
+**Feature : `otp-engine`** — branche `feat/otp-engine` (créée depuis `main`)
 
-- [ ] `chore(otp): placer toulouse.osm.pbf et le GTFS Tisséo dans infra/otp/`
-- [ ] `chore(otp): récupérer otp-shaded-*.jar depuis Maven Central`
-- [ ] `chore(otp): construire le graphe (java -Xmx8G --build --save)`
-- [ ] `chore(otp): servir le graphe construit (--load) et vérifier le rechargement au redémarrage`
-- [ ] `feat(otp): déclarer les flux GBFS dans router-config.json`
-- [ ] `test(otp): valider une requête GraphQL de référence (Capitole → Blagnac)`
+Les fichiers de données (`*.osm.pbf`, `*.zip`, `graph.obj`) ne sont **jamais commités** — ils sont
+déjà exclus par `.gitignore` (Phase 1). Seuls les scripts, la configuration OTP et la
+documentation sont versionnés ; les données elles-mêmes sont téléchargées/générées localement par
+ces scripts, à la fois en local et lors du build Docker.
+
+### 3.1 — Prérequis (action système, pas un commit)
+- Installer Java 25 LTS (Temurin/OpenJDK). Vérifier `java -version`.
+- Bloquant reconnu dès la Phase 0 : Java n'est pas encore installé sur cette machine.
+
+### 3.2 — Script de récupération des données
+- [ ] `chore(otp): ajouter les scripts de récupération des données (OSM, GTFS, jar OTP)`
+  - `infra/otp/scripts/fetch-data.*` : télécharge l'extrait OSM (Geofabrik), le GTFS Tisséo et
+    `otp-shaded-*.jar` (Maven Central) dans `infra/otp/`.
+  - `infra/otp/README.md` : procédure manuelle + scriptée, versions attendues.
+
+### 3.3 — Exécution de la récupération (action, pas un commit — fichiers gitignorés)
+- Lancer le script : télécharge l'extrait Haute-Garonne/Occitanie, le GTFS Tisséo, le jar OTP.
+- Vérifier les tailles/versions obtenues avant de poursuivre.
+
+### 3.4 — Configuration OTP
+- [ ] `feat(otp): configurer build-config.json et router-config.json`
+  - `infra/otp/build-config.json` : active OSM + GTFS, désactive ce qui n'est pas nécessaire
+    (élévation, etc.) pour accélérer le build.
+  - `infra/otp/router-config.json` : déclare le flux GBFS VélôToulouse (auto-discovery
+    `gbfs.json`), et les paramètres de routage par défaut.
+
+### 3.5 — Construction du graphe (action système, pas un commit — `graph.obj` gitignoré)
+- `java -Xmx8G -jar otp-shaded.jar --build --save infra/otp`
+- Opération longue (plusieurs minutes) et sensible à la RAM disponible.
+- [ ] `docs(otp): documenter la procédure de build et les pièges (RAM, taille de l'extrait)`
+  - Complète `infra/otp/README.md` avec la commande exacte, le temps observé, les erreurs
+    rencontrées et leur résolution.
+
+### 3.6 — Service Docker finalisé
+- [ ] `fix(otp): finaliser le service otp dans docker-compose (chargement du graphe, healthcheck)`
+  - `infra/docker-compose.yml` : healthcheck HTTP sur l'API OTP, `-Xmx` cohérent avec les
+    ressources du conteneur, `restart` adapté maintenant que le graphe existe réellement.
+
+### 3.7 — Test de la requête de référence
+- [ ] `test(otp): valider une requête d'itinéraire de référence (Capitole → Blagnac)`
+  - Script (`infra/otp/scripts/test-query.*`) qui interroge l'API GraphQL d'OTP et vérifie
+    qu'un plan avec au moins un `leg` est renvoyé. Exposé en script pnpm racine (`pnpm otp:test`).
+
+### 3.8 — Rebuild planifié *(probablement différé à la Phase 11/12 — pas de CI/CD encore en place)*
 - [ ] `ci(otp): planifier la reconstruction du graphe à la publication d'un nouveau GTFS`
-- [ ] `docs(otp): noter les pièges rencontrés (RAM, taille de l'extrait OSM) dans docs/avancement.md`
+  - À évaluer le moment venu : GitHub Actions cron, ou tâche planifiée côté VPS en Phase 12.
+    Documenter l'intention dans `infra/otp/README.md` en attendant.
+
+### 3.9 — Journal de bord
+- [ ] `docs(otp): reporter l'avancement de la Phase 3 dans docs/avancement.md`
+  - Première création de `docs/avancement.md` si besoin (cases à cocher Phases 0 à 3).
+
+### Fusion
+- Une fois la DoD validée : merge `feat/otp-engine` → `main` (`git merge --no-ff feat/otp-engine`).
 
 **DoD sprint** : requête d'itinéraire multimodal cohérente, redémarrage via graphe sauvegardé.
 
