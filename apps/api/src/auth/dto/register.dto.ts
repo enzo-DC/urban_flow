@@ -1,10 +1,11 @@
+import { PASSWORD_MIN_LENGTH } from '@urbanflow/shared';
 import { Equals, IsBoolean, IsEmail, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
   email!: string;
 
-  @MinLength(12)
+  @MinLength(PASSWORD_MIN_LENGTH)
   password!: string;
 
   @IsBoolean()
