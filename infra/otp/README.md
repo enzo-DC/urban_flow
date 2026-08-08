@@ -65,6 +65,36 @@ la dégradation gracieuse attendue par les règles du projet : une source tierce
 tomber le routage transport en commun + marche. À surveiller : si le flux se corrige côté
 opérateur, l'updater doit se remettre à jour sans intervention.
 
+## Servir via Docker
+
+```bash
+docker compose up -d otp   # depuis infra/
+```
+
+Le service (`infra/docker-compose.yml`) charge `infra/otp/graph.obj` au démarrage — reconstruire
+le graphe ne se fait jamais depuis le conteneur, seulement via les commandes ci-dessus en local.
+
+## Tester la requête de référence
+
+```bash
+pnpm otp:test          # contre localhost:8080, quelle que soit la méthode de démarrage
+```
+
+Vérifie qu'un trajet Capitole → Blagnac renvoie au moins un itinéraire multimodal cohérent.
+
+## Reconstruction planifiée
+
+Tisséo republie son GTFS quotidiennement (voir le lien de téléchargement). Le graphe doit donc
+être reconstruit périodiquement pour rester à jour — **différé à la Phase 11/12** : il n'y a pas
+encore de pipeline CI/CD dans ce projet (Phase 11) ni d'environnement de production (Phase 12)
+pour héberger une tâche planifiée. Options à évaluer le moment venu :
+- GitHub Actions avec un déclencheur `schedule` (cron) qui relance `fetch-data.sh` + le build et
+  publie le nouveau `graph.obj` (ou reconstruit l'image Docker) ;
+- une tâche planifiée côté VPS OVHcloud (`cron` + le script existant), une fois la Phase 12 en
+  place.
+
+Dans tous les cas, le déclencheur est la publication d'un nouveau GTFS, pas un intervalle fixe.
+
 ### Pour aller plus loin (non fait ici, faute de nécessité)
 
 Le dossier recommande de réduire l'extrait OSM à la zone utile (rectangle englobant
