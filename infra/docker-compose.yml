@@ -27,17 +27,26 @@ services:
       timeout: 5s
       retries: 10
 
-  # NOTE (Phase 3) : ce service a besoin d'un graphe construit dans ./otp (graph.obj) pour
-  # répondre correctement. Tant que la Phase 3 n'a pas été traitée, il démarre puis s'arrête
-  # faute de données — ce n'est pas bloquant pour les autres services.
+  # Nécessite un graphe construit dans ./otp (graph.obj) — voir infra/otp/README.md.
+  # L'image fixe elle-même le répertoire de base à /var/opentripplanner (entrypoint), inutile
+  # de le repasser en argument de commande.
   otp:
-    image: docker.io/opentripplanner/opentripplanner:2.7.0
-    restart: "no"
-    command: ["--load", "/var/opentripplanner"]
+    image: docker.io/opentripplanner/opentripplanner:2.9.0
+    restart: unless-stopped
+    command: ["--load"]
+    environment:
+      JAVA_OPTS: "-Xmx6G"
     ports:
       - "8080:8080"
     volumes:
       - ./otp:/var/opentripplanner
+    healthcheck:
+      # Pas de wget/curl dans l'image (Ubuntu minimal, jib) : simple test de connexion TCP.
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
 
   api:
     build:
