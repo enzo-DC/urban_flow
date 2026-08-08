@@ -8,3 +8,117 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Utilisateur {
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  motDePasseHash     String
+  consentementRgpdAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  profilMobilite ProfilMobilite?
+  trajets        Trajet[]
+  recompenses    Recompense[]
+
+  @@map("utilisateurs")
+}
+
+model ProfilMobilite {
+  id                   String   @id @default(uuid())
+  utilisateurId        String   @unique
+  modesPreferes        String[]
+  besoinsAccessibilite Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+
+  @@map("profils_mobilite")
+}
+
+model Operateur {
+  id          String @id @default(uuid())
+  nom         String @unique
+  typeService String
+
+  segments Segment[]
+
+  @@map("operateurs")
+}
+
+model Itineraire {
+  id            String @id @default(uuid())
+  dureeSecondes Int
+  co2Grammes    Int
+
+  /// Point géographique WGS84 — jamais accessible via Prisma Client, uniquement en SQL natif ($queryRaw).
+  depart  Unsupported("geography(Point, 4326)")
+  /// Point géographique WGS84 — jamais accessible via Prisma Client, uniquement en SQL natif ($queryRaw).
+  arrivee Unsupported("geography(Point, 4326)")
+
+  createdAt DateTime @default(now())
+
+  segments Segment[]
+  trajet   Trajet?
+
+  @@map("itineraires")
+}
+
+model Segment {
+  id             String @id @default(uuid())
+  itineraireId   String
+  ordre          Int
+  mode           String
+  distanceMetres Int
+  dureeSecondes  Int
+  co2Grammes     Int
+  operateurId    String?
+
+  /// Point géographique WGS84 — jamais accessible via Prisma Client, uniquement en SQL natif ($queryRaw).
+  depart  Unsupported("geography(Point, 4326)")
+  /// Point géographique WGS84 — jamais accessible via Prisma Client, uniquement en SQL natif ($queryRaw).
+  arrivee Unsupported("geography(Point, 4326)")
+
+  itineraire Itineraire @relation(fields: [itineraireId], references: [id], onDelete: Cascade)
+  operateur  Operateur? @relation(fields: [operateurId], references: [id])
+
+  @@map("segments")
+}
+
+model Trajet {
+  id            String   @id @default(uuid())
+  utilisateurId String
+  itineraireId  String   @unique
+  effectueLe    DateTime @default(now())
+
+  utilisateur      Utilisateur       @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  itineraire       Itineraire        @relation(fields: [itineraireId], references: [id])
+  empreinteCarbone EmpreinteCarbone?
+
+  @@map("trajets")
+}
+
+model EmpreinteCarbone {
+  id              String   @id @default(uuid())
+  trajetId        String   @unique
+  co2Grammes      Int
+  co2EviteGrammes Int
+  createdAt       DateTime @default(now())
+
+  trajet Trajet @relation(fields: [trajetId], references: [id], onDelete: Cascade)
+
+  @@map("empreintes_carbone")
+}
+
+model Recompense {
+  id            String   @id @default(uuid())
+  utilisateurId String
+  type          String
+  points        Int
+  obtenueLe     DateTime @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+
+  @@map("recompenses")
+}
