@@ -1,9 +1,19 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // .env (local, host="localhost") passe avant ../../.env (racine, host="db" pour Docker) :
+      // dotenv ne surcharge pas une variable deja definie, donc le premier fichier gagne.
+      envFilePath: ['.env', '../../.env'],
+    }),
+    PrismaModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
