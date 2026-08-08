@@ -8,6 +8,9 @@ import { JwtAuthGuard } from './jwt-auth.guard';
   imports: [JwtModule.register({})],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard],
-  exports: [JwtAuthGuard],
+  // JwtModule est ré-exporté : JwtAuthGuard est instancié par chaque module
+  // consommateur (@UseGuards(JwtAuthGuard) crée sa propre instance via DI),
+  // il lui faut donc JwtService disponible dans ce module-là aussi.
+  exports: [JwtModule, JwtAuthGuard],
 })
 export class AuthModule {}
