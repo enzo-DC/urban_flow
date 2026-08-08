@@ -10,7 +10,7 @@
   "packageManager": "pnpm@10.3.0",
   "scripts": {
     "dev:web": "pnpm --filter web dev",
-    "dev:api": "pnpm --filter api dev",
+    "dev:api": "pnpm --filter api start:dev",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "test:e2e": "pnpm --filter web test:e2e",
