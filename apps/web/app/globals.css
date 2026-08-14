@@ -475,3 +475,157 @@ button {
   color: var(--carbon);
   border: 1px solid #bfe0cd;
 }
+
+/* ============ Planificateur (carte, recherche, résultats) ============ */
+
+.planner-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.planner-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search-field {
+  position: relative;
+}
+.search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(15, 27, 38, 0.12);
+  max-height: 260px;
+  overflow-y: auto;
+  list-style: none;
+}
+.search-results li button {
+  appearance: none;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  padding: 12px 16px;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.search-results li button:hover,
+.search-results li button:focus-visible {
+  background: var(--surface-primary);
+}
+
+.btn-geoloc {
+  appearance: none;
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+}
+.btn-geoloc:hover {
+  text-decoration: underline;
+}
+.btn-geoloc:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.map-shell {
+  width: 100%;
+  height: 320px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface-base);
+}
+.map-shell-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trip-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trip-card {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.trip-card[aria-pressed='true'] {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1.5px var(--primary);
+}
+
+.trip-card-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.trip-mode {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface-primary);
+  color: var(--primary-dark);
+}
+.trip-mode-marche {
+  background: var(--surface-base);
+  color: var(--slate);
+}
+.trip-mode-voiture,
+.trip-mode-scooter {
+  background: var(--surface-alert);
+  color: #7a4310;
+}
+.trip-mode-velo,
+.trip-mode-trottinette {
+  background: var(--surface-success);
+  color: var(--carbon);
+}
+
+.trip-card-stats {
+  display: flex;
+  gap: 24px;
+}
+.trip-stat {
+  display: flex;
+  flex-direction: column;
+}
+.trip-stat strong {
+  font-size: 18px;
+  font-weight: 700;
+}
+.trip-stat span {
+  font-size: 12px;
+  color: var(--slate);
+}
