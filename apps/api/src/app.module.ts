@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { ItinerairesModule } from './itineraires/itineraires.module';
+import { LieuxModule } from './lieux/lieux.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { UsersModule } from './users/users.module';
@@ -23,6 +24,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     IntegrationsModule,
     ItinerairesModule,
+    LieuxModule,
   ],
   controllers: [AppController],
   providers: [AppService],
