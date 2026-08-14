@@ -6,6 +6,10 @@ export interface OtpLeg {
   distanceMetres: number;
   depart: Coordonnees;
   arrivee: Coordonnees;
+  /** Identifiant de ligne GTFS (prefixe de feed OTP retire), absent hors transport en commun. */
+  ligneId?: string;
+  /** Identifiant de voyage GTFS (prefixe de feed OTP retire), absent hors transport en commun. */
+  voyageId?: string;
 }
 
 export interface OtpItineraire {
@@ -19,6 +23,8 @@ export interface OtpGraphQlLegNode {
   distance: number;
   from: { lat: number; lon: number };
   to: { lat: number; lon: number };
+  route: { gtfsId: string } | null;
+  trip: { gtfsId: string } | null;
 }
 
 export interface OtpGraphQlPlanNode {

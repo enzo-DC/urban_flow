@@ -2,4 +2,6 @@ export * from './types/mode-transport';
 export * from './types/coordonnees';
 export * from './types/segment';
 export * from './types/itineraire';
+export * from './types/vehicule-disponible';
+export * from './types/reponse-itineraires';
 export * from './constants/auth';

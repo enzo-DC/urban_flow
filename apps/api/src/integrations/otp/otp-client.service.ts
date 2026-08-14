@@ -23,12 +23,21 @@ const PLAN_QUERY = `
             distance
             from { lat lon }
             to { lat lon }
+            route { gtfsId }
+            trip { gtfsId }
           }
         }
       }
     }
   }
 `;
+
+// OTP prefixe les gtfsId avec l'identifiant interne du feed ("1:line:61"),
+// absent du flux GTFS-RT brut ("line:61") — verifie en comparant les deux en
+// conditions reelles avant d'ecrire cette fonction.
+function retirerPrefixeFeed(gtfsId: string): string {
+  return gtfsId.replace(/^[^:]+:/, '');
+}
 
 function versLocation(coordonnees: Coordonnees) {
   return {
@@ -99,6 +108,8 @@ export class OtpClientService {
         distanceMetres: leg.distance,
         depart: { latitude: leg.from.lat, longitude: leg.from.lon },
         arrivee: { latitude: leg.to.lat, longitude: leg.to.lon },
+        ligneId: leg.route ? retirerPrefixeFeed(leg.route.gtfsId) : undefined,
+        voyageId: leg.trip ? retirerPrefixeFeed(leg.trip.gtfsId) : undefined,
       })),
     };
   }
