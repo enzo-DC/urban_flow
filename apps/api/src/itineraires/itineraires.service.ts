@@ -109,6 +109,7 @@ export class ItinerairesService {
       dureeSecondes: leg.dureeSecondes,
       operateur: leg.ligneId,
       co2Grammes: calculerCo2Grammes(leg.mode, leg.distanceMetres),
+      trace: leg.trace,
     }));
 
     return {

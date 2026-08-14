@@ -25,6 +25,7 @@ const PLAN_QUERY = `
             to { lat lon }
             route { gtfsId }
             trip { gtfsId }
+            legGeometry { points }
           }
         }
       }
@@ -110,6 +111,7 @@ export class OtpClientService {
         arrivee: { latitude: leg.to.lat, longitude: leg.to.lon },
         ligneId: leg.route ? retirerPrefixeFeed(leg.route.gtfsId) : undefined,
         voyageId: leg.trip ? retirerPrefixeFeed(leg.trip.gtfsId) : undefined,
+        trace: leg.legGeometry?.points,
       })),
     };
   }

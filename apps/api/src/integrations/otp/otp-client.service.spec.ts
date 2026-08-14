@@ -108,6 +108,7 @@ describe('OtpClientService', () => {
                       to: { lat: 0, lon: 0 },
                       route: { gtfsId: '1:line:61' },
                       trip: { gtfsId: '1:2349722' },
+                      legGeometry: null,
                     },
                     {
                       mode: 'WALK',
@@ -117,6 +118,7 @@ describe('OtpClientService', () => {
                       to: { lat: 0, lon: 0 },
                       route: null,
                       trip: null,
+                      legGeometry: null,
                     },
                   ],
                 },
@@ -137,6 +139,44 @@ describe('OtpClientService', () => {
     expect(result[0].legs[0].voyageId).toBe('2349722');
     expect(result[0].legs[1].ligneId).toBeUndefined();
     expect(result[0].legs[1].voyageId).toBeUndefined();
+  });
+
+  it('recupere la trace (polyline encodee) de legGeometry pour affichage carte', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse({
+        data: {
+          planConnection: {
+            edges: [
+              {
+                node: {
+                  duration: 100,
+                  legs: [
+                    {
+                      mode: 'WALK',
+                      duration: 100,
+                      distance: 150,
+                      from: { lat: 0, lon: 0 },
+                      to: { lat: 0, lon: 0 },
+                      route: null,
+                      trip: null,
+                      legGeometry: { points: 'cociGgayGBe@Ac@AK' },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    const client = new OtpClientService(buildConfig());
+    const result = await client.planifier(
+      { latitude: 0, longitude: 0 },
+      { latitude: 0, longitude: 0 },
+    );
+
+    expect(result[0].legs[0].trace).toBe('cociGgayGBe@Ac@AK');
   });
 
   it('retombe sur le mode bus pour un mode OTP sans equivalent direct', async () => {

@@ -10,6 +10,8 @@ export interface OtpLeg {
   ligneId?: string;
   /** Identifiant de voyage GTFS (prefixe de feed OTP retire), absent hors transport en commun. */
   voyageId?: string;
+  /** Trace du segment, polyline encodee (format Google, precision 5), pour affichage carte. */
+  trace?: string;
 }
 
 export interface OtpItineraire {
@@ -25,6 +27,7 @@ export interface OtpGraphQlLegNode {
   to: { lat: number; lon: number };
   route: { gtfsId: string } | null;
   trip: { gtfsId: string } | null;
+  legGeometry: { points: string } | null;
 }
 
 export interface OtpGraphQlPlanNode {

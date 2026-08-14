@@ -1,9 +1,6 @@
-import type { Coordonnees } from '@urbanflow/shared';
+import type { LieuGeocode } from '@urbanflow/shared';
 
-export interface LieuGeocode {
-  label: string;
-  position: Coordonnees;
-}
+export type { LieuGeocode };
 
 export interface NominatimResultat {
   display_name: string;
