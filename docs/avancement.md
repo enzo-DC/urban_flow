@@ -9,7 +9,7 @@ friction rencontrés et les ajustements faits par rapport au plan initial.
 - [x] Phase 3 — OpenTripPlanner
 - [x] Phase 4 — F1 compte & profil
 - [x] Phase 5 — F3 temps réel
-- [ ] Phase 6 — F2 planificateur
+- [x] Phase 6 — F2 planificateur
 - [ ] Phase 7 — F4 carbone
 - [ ] Phase 8 — Gamification
 - [ ] Phase 9 — PWA
@@ -130,3 +130,57 @@ manuel) avant d'écrire le moindre code contre sa forme supposée.
 - Comme en Phase 4, chaque branche validée par un test réel contre le vrai service externe
   (script jetable, supprimé après vérification) en plus de la suite de tests unitaires
   mockés, avant merge `--no-ff`.
+
+## Phase 6 — F2 planificateur multimodal (cœur du produit)
+
+Découpée en 4 branches séquentielles (`feat/otp-client`, `feat/geocoding`,
+`feat/itineraire-aggregation`, `feat/web-map-planner`), même convention qu'en Phases 4 et 5.
+Décision de cadrage prise avant de commencer : le géocodage passe par Nominatim plutôt que le
+service places de l'API Tisséo — celui-ci nécessite une clé attribuée manuellement par mail à
+opendata@tisseo.fr (pas de signup en libre-service), incompatible avec la règle du projet de
+toujours vérifier un flux en conditions réelles avant d'écrire du code contre lui.
+
+- **Client OTP** : `planConnection` (le champ `plan` est déprécié depuis OTP 2.x — confirmé par
+  introspection avant d'écrire le client). Traduit le `Mode` OTP (plus riche : rail, ferry,
+  avion, taxi...) vers le `ModeTransport` du projet, calé sur le réseau Tisséo réellement
+  desservi à Toulouse ; un mode sans équivalent direct retombe sur `bus`. Étendu en cours de
+  Phase 6 (branches 3 et 4) pour récupérer `route.gtfsId`/`trip.gtfsId` (recoupement avec les
+  perturbations GTFS-RT) et `legGeometry.points` (tracé pour la carte) — piège vérifié en
+  conditions réelles : OTP préfixe les identifiants avec le feed interne (`1:line:61`), absent
+  du flux GTFS-RT brut (`line:61`).
+- **Agrégation** (`POST /api/v1/itineraires`) : trois sources en parallèle sans blocage mutuel —
+  OTP et GTFS-RT via un `Promise.allSettled`, les fournisseurs GBFS via un second
+  `Promise.allSettled` indépendant, les deux groupes rejoints par un seul `Promise.all` (déjà
+  sûrs, ils ne rejettent jamais). Un segment de transport en commun annulé invalide l'itinéraire
+  entier ; un retard s'ajoute à la durée totale. CO2 par segment calculé avec une table d'ordres
+  de grandeur locale et non versionnée — la table ADEME versionnée officielle est le sujet de la
+  Phase 7, pas de celle-ci. Cache Valkey sur le couple départ/arrivée arrondi, appliqué avant tri
+  et filtre (qui s'exécutent à la volée sur le résultat brut mis en cache, pour maximiser le taux
+  de succès) ; comme pour le géocodage, un résultat vide (échec OTP transitoire) n'est jamais mis
+  en cache. Vérifié contre la vraie stack (OTP + Valkey + les deux flux GBFS + GTFS-RT Tisséo) :
+  POST réel Capitole → Blagnac, 201 en 606 ms (budget < 2 s tenu), 5 itinéraires avec CO2 par
+  segment et ligne GTFS, 767 disponibilités agrégées ; deuxième appel identique servi par le
+  cache en 17 ms.
+- **Front** (`feat/web-map-planner`) : écran `/planificateur` — deux champs d'adresse avec
+  autocomplete (proxy BFF vers le nouvel endpoint public `GET /api/v1/lieux/recherche`),
+  géolocalisation avec repli sur saisie manuelle, tri segmenté durée/CO2, carte MapLibre GL +
+  fond de tuiles OSM (composant client chargé via `next/dynamic` avec `ssr: false`, MapLibre
+  exige `window`), cartes de résultats comparables. La trace du trajet (polyline encodée
+  OTP) est décodée côté client (`decode-polyline.ts`, vérifié contre un échantillon réel avant
+  intégration) pour dessiner le vrai tracé plutôt que des lignes droites.
+- **E2E absent du projet jusqu'ici** : le script `test:e2e` référencé dans le `package.json`
+  racine depuis la Phase 4 n'avait jamais été implémenté côté web (aucun framework installé).
+  Ajouté cette phase : Playwright, un test réel (Capitole → Blagnac, plusieurs options triables)
+  vérifié contre la vraie stack complète (web + api + Postgres + Valkey + OTP + Nominatim).
+- **Limitation d'environnement découverte en vérifiant visuellement la carte** : le rendu WebGL
+  d'une ligne vectorielle MapLibre ne s'affiche pas dans Chromium headless de cet environnement
+  sandboxé (vérifié par élimination : une ligne codée en dur avec des couleurs et une épaisseur
+  volontairement extrêmes ne s'affiche pas non plus, alors que les tuiles raster et les marqueurs
+  DOM s'affichent normalement ; le style/source/layer MapLibre a été confirmé structurellement
+  correct par introspection — paint, géométrie, bounds). Conclusion : limitation du navigateur
+  headless de cet environnement, pas un défaut du code. Le test E2E ne vérifie donc pas le rendu
+  pixel de la trace, seulement le pipeline fonctionnel (résultats, tri, absence d'erreur) — point
+  d'attention pour une vérification visuelle manuelle en navigateur réel avant la soutenance.
+- Comme aux phases précédentes, chaque branche validée par un test réel contre la vraie stack
+  (script jetable, supprimé après vérification) en plus de la suite de tests unitaires mockés,
+  avant merge `--no-ff`.
