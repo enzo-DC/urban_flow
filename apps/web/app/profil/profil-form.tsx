@@ -8,6 +8,7 @@ const MODE_LABELS: Record<ModeTransport, string> = {
   marche: 'Marche',
   velo: 'Vélo',
   trottinette: 'Trottinette',
+  scooter: 'Scooter',
   bus: 'Bus',
   metro: 'Métro',
   tram: 'Tram',
