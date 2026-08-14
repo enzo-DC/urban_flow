@@ -7,7 +7,7 @@ friction rencontrés et les ajustements faits par rapport au plan initial.
 - [x] Phase 1 — Socle monorepo
 - [x] Phase 2 — Base de données
 - [x] Phase 3 — OpenTripPlanner
-- [ ] Phase 4 — F1 compte & profil
+- [x] Phase 4 — F1 compte & profil
 - [ ] Phase 5 — F3 temps réel
 - [ ] Phase 6 — F2 planificateur
 - [ ] Phase 7 — F4 carbone
@@ -62,3 +62,38 @@ Risque technique principal du dossier, traité tôt comme prévu. Résumé :
   service `docker-compose` (image alignée sur 2.9.0).
 - **Reconstruction planifiée** : différée aux Phases 11/12 (pas de CI/CD ni de VPS encore en
   place pour l'orchestrer) — juste documentée pour l'instant dans `infra/otp/README.md`.
+
+## Phase 4 — F1 compte et profil de mobilité
+
+Découpée en 5 branches séquentielles (`feat/auth-backend`, `feat/gdpr-rights`,
+`feat/profile-backend`, `feat/auth-pages`, `feat/profile-page`), chacune mergée avant de
+démarrer la suivante — nouvelle convention adoptée à partir de cette phase (une branche par
+sous-domaine plutôt qu'une seule par phase).
+
+- **Auth backend** : JWT court (15 min) + refresh token en rotation à usage unique, stocké
+  dans Valkey (pas dans Postgres) pour que l'API reste sans état. Argon2 pour les mots de
+  passe. Piège réel : Prisma 7 impose un driver adapter, pas de souci ici car déjà réglé en
+  Phase 2 — mais `AuthModule` doit ré-exporter `JwtModule` (pas seulement le guard), sinon tout
+  module qui utilise `@UseGuards(JwtAuthGuard)` plante au démarrage (découvert en écrivant le
+  module RGPD, cassait même un test e2e de la Phase 1).
+- **RGPD** : export JSON complet et suppression réelle (cascade Prisma), jamais un flag
+  `deleted`. Erreurs "compte introuvable" mappées en 404 plutôt que de laisser fuiter une 500.
+- **BFF côté Next.js** (`feat/auth-pages`, `feat/profile-page`) : décision d'architecture
+  centrale de cette phase — le JWT ne quitte **jamais** le serveur Next.js. Les Route Handlers
+  relaient vers NestJS et reposent leurs propres cookies httpOnly (`access_token` et
+  `refresh_token`), le navigateur ne voit jamais le token brut ni l'URL interne de l'API. Un
+  helper dédié (`callAuthenticated`) gère le refresh automatique si l'access token a expiré
+  (15 min), avec un seul essai de retry.
+- **Constante partagée** : `PASSWORD_MIN_LENGTH` déplacée dans `@urbanflow/shared` pour que la
+  validation du formulaire web et le `RegisterDto` NestJS ne puissent jamais diverger.
+- **Incident hors-scope réglé pendant cette phase** : le disque `C:` s'est rempli à 100 % (0
+  octet libre) à force de reconstruire les images Docker — Docker Desktop a fini par planter.
+  Cause : le fichier `docker_data.vhdx` (disque virtuel WSL2) grossit à chaque build mais ne se
+  réduit jamais tout seul, même après un `docker system prune`. Un `docker system prune -af`
+  a libéré 19,5 Go *à l'intérieur* du disque virtuel, mais le fichier lui-même restait à 23 Go
+  sur l'hôte tant qu'il n'était pas compacté explicitement (`diskpart` : `attach vdisk
+  readonly` puis `compact vdisk`, après `wsl --shutdown`). Résultat : 23 Go → 3,1 Go, et 2,7 Go
+  → 26 Go d'espace libre. Les données des volumes (base, cache) ont été préservées tout du
+  long ; seules les images ont dû être reconstruites.
+- Chaque branche validée par un test réel contre la vraie stack (Postgres + Valkey + NestJS,
+  parfois via Docker directement) avant merge, pas seulement via des tests unitaires mockés.
