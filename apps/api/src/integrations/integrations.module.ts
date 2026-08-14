@@ -3,6 +3,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { FOURNISSEUR_MOBILITE_TOKEN } from './fournisseur-mobilite.interface';
 import { VeloToulouseProvider } from './gbfs/velo-toulouse.provider';
 import { TisseoGtfsRtService } from './gtfs-rt/tisseo-gtfs-rt.service';
+import { OtpClientService } from './otp/otp-client.service';
 import { YegoScooterProvider } from './yego/yego-scooter.provider';
 
 @Module({
@@ -11,6 +12,7 @@ import { YegoScooterProvider } from './yego/yego-scooter.provider';
     VeloToulouseProvider,
     YegoScooterProvider,
     TisseoGtfsRtService,
+    OtpClientService,
     {
       provide: FOURNISSEUR_MOBILITE_TOKEN,
       useFactory: (velo: VeloToulouseProvider, yego: YegoScooterProvider) => [
@@ -20,6 +22,6 @@ import { YegoScooterProvider } from './yego/yego-scooter.provider';
       inject: [VeloToulouseProvider, YegoScooterProvider],
     },
   ],
-  exports: [FOURNISSEUR_MOBILITE_TOKEN, TisseoGtfsRtService],
+  exports: [FOURNISSEUR_MOBILITE_TOKEN, TisseoGtfsRtService, OtpClientService],
 })
 export class IntegrationsModule {}
