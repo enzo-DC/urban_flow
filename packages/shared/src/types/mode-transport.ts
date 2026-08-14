@@ -2,6 +2,7 @@ export const MODES_TRANSPORT = [
   'marche',
   'velo',
   'trottinette',
+  'scooter',
   'bus',
   'metro',
   'tram',
