@@ -90,6 +90,55 @@ describe('OtpClientService', () => {
     ]);
   });
 
+  it('retire le prefixe de feed OTP des identifiants de ligne et de voyage', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse({
+        data: {
+          planConnection: {
+            edges: [
+              {
+                node: {
+                  duration: 325,
+                  legs: [
+                    {
+                      mode: 'SUBWAY',
+                      duration: 325,
+                      distance: 2876.26,
+                      from: { lat: 0, lon: 0 },
+                      to: { lat: 0, lon: 0 },
+                      route: { gtfsId: '1:line:61' },
+                      trip: { gtfsId: '1:2349722' },
+                    },
+                    {
+                      mode: 'WALK',
+                      duration: 60,
+                      distance: 50,
+                      from: { lat: 0, lon: 0 },
+                      to: { lat: 0, lon: 0 },
+                      route: null,
+                      trip: null,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    const client = new OtpClientService(buildConfig());
+    const result = await client.planifier(
+      { latitude: 0, longitude: 0 },
+      { latitude: 0, longitude: 0 },
+    );
+
+    expect(result[0].legs[0].ligneId).toBe('line:61');
+    expect(result[0].legs[0].voyageId).toBe('2349722');
+    expect(result[0].legs[1].ligneId).toBeUndefined();
+    expect(result[0].legs[1].voyageId).toBeUndefined();
+  });
+
   it('retombe sur le mode bus pour un mode OTP sans equivalent direct', async () => {
     global.fetch = jest.fn().mockResolvedValue(
       jsonResponse({

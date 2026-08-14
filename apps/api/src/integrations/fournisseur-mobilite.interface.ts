@@ -1,12 +1,6 @@
-import type { Coordonnees, ModeTransport } from '@urbanflow/shared';
+import type { VehiculeDisponible } from '@urbanflow/shared';
 
-/** Un véhicule ou une station en libre-service, tel que remonté par un opérateur. */
-export interface VehiculeDisponible {
-  id: string;
-  mode: ModeTransport;
-  position: Coordonnees;
-  disponible: number;
-}
+export type { VehiculeDisponible };
 
 /**
  * Interface commune a tout operateur de mobilite (GBFS, GTFS-RT, ...).
