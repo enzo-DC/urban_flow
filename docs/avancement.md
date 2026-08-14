@@ -8,7 +8,7 @@ friction rencontrés et les ajustements faits par rapport au plan initial.
 - [x] Phase 2 — Base de données
 - [x] Phase 3 — OpenTripPlanner
 - [x] Phase 4 — F1 compte & profil
-- [ ] Phase 5 — F3 temps réel
+- [x] Phase 5 — F3 temps réel
 - [ ] Phase 6 — F2 planificateur
 - [ ] Phase 7 — F4 carbone
 - [ ] Phase 8 — Gamification
@@ -97,3 +97,36 @@ sous-domaine plutôt qu'une seule par phase).
   long ; seules les images ont dû être reconstruites.
 - Chaque branche validée par un test réel contre la vraie stack (Postgres + Valkey + NestJS,
   parfois via Docker directement) avant merge, pas seulement via des tests unitaires mockés.
+
+## Phase 5 — F3 intégrations temps réel
+
+Découpée en 4 branches séquentielles (`feat/mobility-provider-core`,
+`feat/gbfs-velotoulouse`, `feat/gbfs-scooters`, `feat/gtfs-rt-tisseo`), même convention
+qu'en Phase 4. Chaque flux externe vérifié contre les vraies données (curl + décodage
+manuel) avant d'écrire le moindre code contre sa forme supposée.
+
+- **Abstraction commune** : interface `FournisseurMobilite` (une méthode `disponibilites()`),
+  assemblée par `IntegrationsModule` sous le token `FOURNISSEUR_MOBILITE_TOKEN` via une
+  factory — ajouter un opérateur = ajouter une classe + une ligne dans le tableau, sans
+  toucher au reste du module.
+- **GBFS VélôToulouse** : auto-discovery (`gbfs.json`), jamais d'URL de sous-flux codée en
+  dur ; cache Valkey aligné sur le `ttl` annoncé par `station_status.json` plutôt qu'une
+  valeur arbitraire. Vérifié en réel : 466 stations, ~1,4 s à froid puis ~1,3 ms en cache.
+- **GBFS YEGO (trottinettes/scooters free-floating)** : même pattern, forme de flux
+  différente (`free_bike_status`, pas de notion de station) — a motivé l'ajout du mode
+  `scooter` dans `@urbanflow/shared` (distinct de `trottinette`, l'opérateur propose les
+  deux types de véhicule). Filtre `!is_reserved && !is_disabled` pour ne remonter que les
+  véhicules réellement disponibles. Vérifié en réel : 295 scooters.
+- **GTFS-RT Tisséo** : seul flux au format Protocol Buffers (pas JSON) du dossier, décodé via
+  `gtfs-realtime-bindings`. Contrairement aux flux GBFS (cache-aside à la demande), le flux
+  n'annonce pas son propre TTL : rafraîchissement piloté par une tâche planifiée
+  (`@Interval`, 45 s), `getPerturbations()` ne fait que lire le cache. TTL de cache (120 s)
+  volontairement supérieur à l'intervalle de rafraîchissement pour qu'un cycle raté ne vide
+  pas l'état — utile en pratique, le flux beta de Tisséo a répondu 502 sur 1 tentative sur 3
+  lors des essais manuels. Piège réel découvert en testant contre le vrai flux : `protobuf.js`
+  renvoie une chaîne vide (`""`) et non `undefined` pour un champ `string` optionnel absent du
+  message décodé — le fallback `routeId`/`tripId` doit utiliser `||`, pas `??`. Vérifié en
+  réel : 851 entités, 202 perturbations détectées (68 annulations, 38 ajouts, 96 retards).
+- Comme en Phase 4, chaque branche validée par un test réel contre le vrai service externe
+  (script jetable, supprimé après vérification) en plus de la suite de tests unitaires
+  mockés, avant merge `--no-ff`.
