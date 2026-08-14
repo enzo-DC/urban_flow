@@ -24,6 +24,20 @@ export interface GbfsStationStatusResponse {
   };
 }
 
+/** Vehicules free-floating (pas de station) — ex. free_bike_status.json. */
+export interface GbfsFreeVehicleStatusResponse {
+  ttl: number;
+  data: {
+    bikes: {
+      bike_id: string;
+      lat: number;
+      lon: number;
+      is_reserved: boolean;
+      is_disabled: boolean;
+    }[];
+  };
+}
+
 export function findFeedUrl(
   discovery: GbfsDiscoveryResponse,
   feedName: string,
