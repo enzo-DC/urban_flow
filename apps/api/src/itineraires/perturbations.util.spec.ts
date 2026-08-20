@@ -34,12 +34,25 @@ describe('appliquerPerturbations', () => {
     expect(appliquerPerturbations(it, perturbations)).toBeNull();
   });
 
-  it('renvoie null si un segment correspond a une annulation (par routeId, sans voyageId)', () => {
+  it('ne fait jamais retomber le rapprochement sur routeId seul (regression reelle)', () => {
+    // Un voyage precis (voyageId '123') sur la ligne 'line:61' ne doit pas
+    // etre annule parce qu'un AUTRE voyage de la meme ligne (tripId '999')
+    // est perturbe — bug reel decouvert en testant contre le vrai flux
+    // GTFS-RT (ligne tres frequentee, dizaines de perturbations actives
+    // simultanement, vidait systematiquement les resultats de recherche).
+    const it = itineraire([{ ligneId: 'line:61', voyageId: '123' }]);
+    const perturbations: PerturbationTrajet[] = [
+      { tripId: '999', routeId: 'line:61', statut: 'ANNULE' },
+    ];
+    expect(appliquerPerturbations(it, perturbations)).toBe(it);
+  });
+
+  it('ignore un segment sans voyageId meme si sa ligne a une perturbation active', () => {
     const it = itineraire([{ ligneId: 'line:61', voyageId: undefined }]);
     const perturbations: PerturbationTrajet[] = [
       { tripId: '999', routeId: 'line:61', statut: 'ANNULE' },
     ];
-    expect(appliquerPerturbations(it, perturbations)).toBeNull();
+    expect(appliquerPerturbations(it, perturbations)).toBe(it);
   });
 
   it('ajoute le retard a la duree totale si un segment est retarde', () => {
