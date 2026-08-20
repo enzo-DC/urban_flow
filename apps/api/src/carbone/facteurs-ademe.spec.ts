@@ -2,6 +2,7 @@ import { MODES_TRANSPORT } from '@urbanflow/shared';
 import {
   calculerCo2EviteGrammes,
   calculerCo2Grammes,
+  kmVoitureEquivalents,
   sourceFacteur,
 } from './facteurs-ademe';
 
@@ -66,5 +67,18 @@ describe('calculerCo2EviteGrammes', () => {
     const distance = 3000;
     const co2Voiture = calculerCo2Grammes('voiture', distance);
     expect(calculerCo2EviteGrammes(distance, 0)).toBe(co2Voiture);
+  });
+});
+
+describe('kmVoitureEquivalents', () => {
+  it('convertit un montant de CO2 en kilometres de voiture equivalents', () => {
+    // voiture : 214 g/km -> 2140 g = 10 km
+    expect(kmVoitureEquivalents(2140)).toBeCloseTo(10, 5);
+  });
+
+  it("est l'inverse exact de calculerCo2Grammes pour la voiture", () => {
+    const distanceMetres = 4200;
+    const co2 = calculerCo2Grammes('voiture', distanceMetres);
+    expect(kmVoitureEquivalents(co2)).toBeCloseTo(distanceMetres / 1000, 1);
   });
 });
