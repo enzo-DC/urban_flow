@@ -17,9 +17,10 @@ model Utilisateur {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  profilMobilite ProfilMobilite?
-  trajets        Trajet[]
-  recompenses    Recompense[]
+  profilMobilite  ProfilMobilite?
+  trajets         Trajet[]
+  recompenses     Recompense[]
+  abonnementsPush AbonnementPush[]
 
   @@map("utilisateurs")
 }
@@ -47,6 +48,13 @@ model Operateur {
   @@map("operateurs")
 }
 
+// ATTENTION avant tout `prisma migrate dev` futur : les index GIST sur les
+// colonnes geography ci-dessous (itineraires_*_gist, segments_*_gist) sont
+// invisibles du DSL Prisma (colonnes Unsupported()). Le moteur de diff les
+// voit comme "en trop" et genere des DROP INDEX dans toute nouvelle
+// migration touchant ces tables — verifier systematiquement le SQL genere
+// et retirer ces DROP INDEX avant d'appliquer (vecu en Phase 8, indexes
+// perdus puis recrees manuellement, voir docs/avancement.md).
 model Itineraire {
   id            String @id @default(uuid())
   dureeSecondes Int
@@ -66,7 +74,7 @@ model Itineraire {
 }
 
 model Segment {
-  id             String @id @default(uuid())
+  id             String  @id @default(uuid())
   itineraireId   String
   ordre          Int
   mode           String
@@ -121,4 +129,20 @@ model Recompense {
   utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
 
   @@map("recompenses")
+}
+
+/// Abonnement Web Push d'un navigateur (PushSubscription du navigateur,
+/// pas un abonnement au sens metier). Un meme utilisateur peut avoir
+/// plusieurs abonnements (plusieurs appareils installes).
+model AbonnementPush {
+  id            String   @id @default(uuid())
+  utilisateurId String
+  endpoint      String   @unique
+  clePublique   String
+  cleAuth       String
+  createdAt     DateTime @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+
+  @@map("abonnements_push")
 }
