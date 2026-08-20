@@ -105,3 +105,12 @@ export function calculerCo2EviteGrammes(
 export function sourceFacteur(mode: ModeTransport): string {
   return TABLE_ADEME[mode].source;
 }
+
+/**
+ * Convertit un montant de CO2 (typiquement le CO2 evite d'un trajet) en
+ * kilometres de voiture equivalents — "l'equivalent concret" affiche a
+ * l'utilisateur (ex. "tu as evite l'equivalent de 3,2 km en voiture").
+ */
+export function kmVoitureEquivalents(co2Grammes: number): number {
+  return co2Grammes / TABLE_ADEME.voiture.grammesParKm;
+}

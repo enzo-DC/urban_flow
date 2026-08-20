@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { CarboneModule } from './carbone/carbone.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { ItinerairesModule } from './itineraires/itineraires.module';
 import { LieuxModule } from './lieux/lieux.module';
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module';
     ItinerairesModule,
     LieuxModule,
     TrajetsModule,
+    CarboneModule,
   ],
   controllers: [AppController],
   providers: [AppService],
