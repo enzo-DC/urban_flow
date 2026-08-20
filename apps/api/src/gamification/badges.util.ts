@@ -1,4 +1,6 @@
-export type Palier = 'bronze' | 'argent' | 'or' | 'platine';
+import type { Palier } from '@urbanflow/shared';
+
+export type { Palier };
 
 // Seuils en points cumules (1 point = 10g de CO2 evite, voir points.util.ts) :
 // bronze reste atteignable apres quelques trajets courts, platine demande un

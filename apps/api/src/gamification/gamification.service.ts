@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import type { GamificationResume } from '@urbanflow/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { paliersFranchis, type Palier } from './badges.util';
 import {
@@ -56,5 +57,23 @@ export class GamificationService {
         new BadgeDebloqueEvent(utilisateurId, palier),
       );
     }
+  }
+
+  async monResume(utilisateurId: string): Promise<GamificationResume> {
+    const [agregat, badges] = await Promise.all([
+      this.prisma.recompense.aggregate({
+        where: { utilisateurId, type: 'trajet' },
+        _sum: { points: true },
+      }),
+      this.prisma.recompense.findMany({
+        where: { utilisateurId, type: { startsWith: PREFIXE_BADGE } },
+        select: { type: true },
+      }),
+    ]);
+
+    return {
+      pointsTotal: agregat._sum.points ?? 0,
+      badges: badges.map((b) => b.type.slice(PREFIXE_BADGE.length) as Palier),
+    };
   }
 }

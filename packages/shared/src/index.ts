@@ -6,4 +6,5 @@ export * from './types/vehicule-disponible';
 export * from './types/reponse-itineraires';
 export * from './types/lieu-geocode';
 export * from './types/impact-carbone';
+export * from './types/gamification';
 export * from './constants/auth';

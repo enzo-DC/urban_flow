@@ -111,3 +111,29 @@ describe('GamificationService.attribuerPointsEtVerifierPaliers', () => {
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 });
+
+describe('GamificationService.monResume', () => {
+  it('renvoie le total de points et les badges debloques', async () => {
+    const prisma = buildPrisma({
+      totalPoints: 642,
+      badgesExistants: ['badge:bronze', 'badge:argent'],
+    });
+    const service = new GamificationService(prisma, buildEventEmitter());
+
+    const resume = await service.monResume('user-1');
+
+    expect(resume).toEqual({
+      pointsTotal: 642,
+      badges: ['bronze', 'argent'],
+    });
+  });
+
+  it('renvoie 0 point et aucun badge pour un compte sans trajet', async () => {
+    const prisma = buildPrisma({ totalPoints: null, badgesExistants: [] });
+    const service = new GamificationService(prisma, buildEventEmitter());
+
+    const resume = await service.monResume('user-1');
+
+    expect(resume).toEqual({ pointsTotal: 0, badges: [] });
+  });
+});

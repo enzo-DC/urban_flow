@@ -338,6 +338,18 @@ button {
   border-color: var(--primary);
   color: #fff;
 }
+.chip-debloque {
+  background: var(--surface-success);
+  border-color: var(--carbon);
+  color: var(--carbon);
+  cursor: default;
+}
+.chip-verrouille {
+  background: var(--surface-base);
+  color: var(--slate);
+  cursor: default;
+  opacity: 0.7;
+}
 
 .toggle-row {
   display: flex;

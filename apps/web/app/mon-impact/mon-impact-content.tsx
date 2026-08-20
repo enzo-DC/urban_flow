@@ -1,8 +1,13 @@
 'use client';
 
-import type { ImpactCarbone } from '@urbanflow/shared';
+import type {
+  GamificationResume,
+  ImpactCarbone,
+  Palier,
+} from '@urbanflow/shared';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { NotificationsPush } from './notifications-push';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', {
@@ -12,9 +17,20 @@ function formatDate(iso: string): string {
   });
 }
 
+const ORDRE_PALIERS: Palier[] = ['bronze', 'argent', 'or', 'platine'];
+const BADGE_INFO: Record<Palier, { label: string; seuil: string }> = {
+  bronze: { label: 'Bronze', seuil: '100 pts' },
+  argent: { label: 'Argent', seuil: '500 pts' },
+  or: { label: 'Or', seuil: '2 000 pts' },
+  platine: { label: 'Platine', seuil: '10 000 pts' },
+};
+
 export function MonImpactContent() {
   const router = useRouter();
   const [impact, setImpact] = useState<ImpactCarbone | null>(null);
+  const [gamification, setGamification] = useState<GamificationResume | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [erreur, setErreur] = useState(false);
 
@@ -22,21 +38,29 @@ export function MonImpactContent() {
     let cancelled = false;
 
     async function load() {
-      const res = await fetch('/api/impact');
-      if (res.status === 401) {
+      const [resImpact, resGamification] = await Promise.all([
+        fetch('/api/impact'),
+        fetch('/api/gamification'),
+      ]);
+
+      if (resImpact.status === 401 || resGamification.status === 401) {
         router.push('/connexion');
         return;
       }
-      if (!res.ok) {
+      if (!resImpact.ok || !resGamification.ok) {
         if (!cancelled) {
           setErreur(true);
           setLoading(false);
         }
         return;
       }
-      const body = (await res.json()) as ImpactCarbone;
+
+      const impactBody = (await resImpact.json()) as ImpactCarbone;
+      const gamificationBody =
+        (await resGamification.json()) as GamificationResume;
       if (!cancelled) {
-        setImpact(body);
+        setImpact(impactBody);
+        setGamification(gamificationBody);
         setLoading(false);
       }
     }
@@ -51,7 +75,7 @@ export function MonImpactContent() {
     return <p className="privacy-copy">Chargement…</p>;
   }
 
-  if (erreur || !impact) {
+  if (erreur || !impact || !gamification) {
     return (
       <p className="form-banner error" role="alert">
         Impossible de charger ton impact pour le moment.
@@ -88,7 +112,35 @@ export function MonImpactContent() {
           <strong>{(impact.co2EviteGrammesTotal / 1000).toFixed(1)} kg</strong>
           <span>CO2 évités au total</span>
         </div>
+        <div className="impact-stat">
+          <strong>{gamification.pointsTotal}</strong>
+          <span>points</span>
+        </div>
       </div>
+
+      <div>
+        <p className="section-title">Badges</p>
+        <div className="chip-group">
+          {ORDRE_PALIERS.map((palier) => {
+            const debloque = gamification.badges.includes(palier);
+            return (
+              <span
+                key={palier}
+                className={`chip${debloque ? ' chip-debloque' : ' chip-verrouille'}`}
+                title={
+                  debloque
+                    ? undefined
+                    : `À partir de ${BADGE_INFO[palier].seuil}`
+                }
+              >
+                {BADGE_INFO[palier].label}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      <NotificationsPush />
 
       <div>
         <p className="section-title">Derniers trajets</p>
