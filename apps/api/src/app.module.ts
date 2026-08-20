@@ -10,6 +10,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { ItinerairesModule } from './itineraires/itineraires.module';
 import { LieuxModule } from './lieux/lieux.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PushModule } from './push/push.module';
 import { RedisModule } from './redis/redis.module';
 import { TrajetsModule } from './trajets/trajets.module';
 import { UsersModule } from './users/users.module';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module';
     TrajetsModule,
     CarboneModule,
     GamificationModule,
+    PushModule,
   ],
   controllers: [AppController],
   providers: [AppService],
