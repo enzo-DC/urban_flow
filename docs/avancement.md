@@ -11,7 +11,7 @@ friction rencontrés et les ajustements faits par rapport au plan initial.
 - [x] Phase 5 — F3 temps réel
 - [x] Phase 6 — F2 planificateur
 - [x] Phase 7 — F4 carbone
-- [ ] Phase 8 — Gamification
+- [x] Phase 8 — Gamification
 - [ ] Phase 9 — PWA
 - [ ] Phase 10 — A11y / sécurité / éco
 - [ ] Phase 11 — Tests & CI
@@ -247,3 +247,55 @@ Découpée en 4 branches séquentielles (`feat/carbon-ademe-table`, `feat/trajet
 - Comme aux phases précédentes, chaque branche validée par un test réel contre la vraie stack
   avant merge `--no-ff` ; le scénario e2e formel « inscription → planification → consultation
   impact » reste le sujet dédié de la Phase 11, pas anticipé ici.
+
+## Phase 8 — Gamification
+
+Découpée en 4 branches séquentielles (`feat/gamification-points`, `feat/gamification-badges`,
+`feat/web-push`, `feat/web-gamification-ui`), même convention qu'aux phases précédentes.
+
+- **Second consommateur indépendant de `TrajetEffectue`** : `GamificationListener` n'importe
+  jamais le module carbone (règle non négociable du dossier) — il dérive son propre CO2 évité à
+  partir des mêmes faits bruts (mode + distance + durée par segment) plutôt que de faire
+  confiance à une conclusion déjà tirée par un autre module. `TrajetEffectueEvent` étendu avec
+  `dureeSecondes` par segment (absent du besoin initial de la Phase 7, nécessaire ici pour la
+  vitesse moyenne) — évolution normale d'un contrat au fil de ses consommateurs.
+- **Points pondérés par le CO2 évité** (1 point / 10g), jamais par le nombre de trajets — un
+  trajet 100 % voiture n'évite rien et ne rapporte donc aucun point.
+- **Anti-fraude** : recoupe le mode déclaré avec la vitesse moyenne du segment (plafonds par
+  mode bases sur des vitesses urbaines plausibles, aucun plafond pour la voiture). Un seul
+  segment suspect invalide l'attribution de points pour tout le trajet ; le trajet lui-même
+  reste enregistré normalement côté carbone — l'anti-fraude ne bloque que la récompense, jamais
+  le suivi honnête.
+- **Badges/paliers** (bronze/argent/or/platine, seuils produit sans référence externe) : stockés
+  comme des `Recompense` de type `badge:<palier>` (points=0, un badge est un marqueur, pas une
+  source de points), aucune migration nécessaire. `paliersFranchis()` renvoie tous les paliers
+  nouvellement atteints, jamais un seul — un trajet conséquent peut en franchir plusieurs d'un
+  coup. Nouvel évènement interne `BadgeDebloque`, distinct de `TrajetEffectue`, propre au module
+  gamification.
+- **Web Push** : clés VAPID réelles générées (`npx web-push generate-vapid-keys`), nouveau
+  modèle `AbonnementPush` (migration Prisma), nettoyage automatique des abonnements expirés
+  (404/410 du service de push). `PushListener` s'abonne à `BadgeDebloque` sans connaître la
+  gamification — même découplage par évènement que pour le carbone.
+- **Écran** : `/mon-impact` (Phase 7) étendu plutôt qu'un nouvel écran — points, badges
+  débloqués/verrouillés, et un bouton d'activation des notifications. Service worker minimal
+  ajouté (`public/sw.js`) uniquement pour la réception Web Push, volontairement borné : le
+  manifest, l'installabilité et le mode hors-ligne restent le sujet de la Phase 9 (Serwist
+  remplacera ou étendra ce fichier à ce moment-là).
+- **Piège réel découvert en générant la migration `AbonnementPush`** : `prisma migrate dev` a
+  proposé de `DROP` les index GIST sur les colonnes geography (`itineraires_*_gist`,
+  `segments_*_gist`) — invisibles du DSL Prisma (`Unsupported()`), le moteur de diff les voit
+  comme « en trop ». Repéré et retiré du SQL généré, mais la première exécution les avait déjà
+  supprimés : recréés manuellement à l'identique. Avertissement ajouté dans `schema.prisma` pour
+  la prochaine migration touchant ces tables — ce piège se reproduira à chaque fois tant que ces
+  colonnes restent en `Unsupported()`.
+- **Limitation d'environnement confirmée à deux reprises** (branches `feat/web-push` et
+  `feat/web-gamification-ui`) : `Notification.permission` reste `"denied"` par défaut dans le
+  Chromium headless de cet environnement sandboxé, quelle que soit la méthode d'octroi testée
+  (`grantPermissions` avec/sans origine, lancement sans `--disable-notifications`) — probable
+  absence d'infrastructure de notification système, dans la même veine que la limitation WebGL
+  de la Phase 6. La souscription Web Push réelle a néanmoins été vérifiée différemment : requête
+  réellement signée (VAPID) et envoyée à l'infrastructure Google FCM avec une clé P-256
+  cryptographiquement valide, acceptée sans erreur. Point d'attention pour une vérification
+  manuelle en navigateur réel avant la soutenance, comme pour le rendu de la carte en Phase 6.
+- Comme aux phases précédentes, chaque branche validée par un test réel contre la vraie stack
+  avant merge `--no-ff`.
