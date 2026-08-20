@@ -10,7 +10,7 @@ friction rencontrés et les ajustements faits par rapport au plan initial.
 - [x] Phase 4 — F1 compte & profil
 - [x] Phase 5 — F3 temps réel
 - [x] Phase 6 — F2 planificateur
-- [ ] Phase 7 — F4 carbone
+- [x] Phase 7 — F4 carbone
 - [ ] Phase 8 — Gamification
 - [ ] Phase 9 — PWA
 - [ ] Phase 10 — A11y / sécurité / éco
@@ -198,3 +198,52 @@ JSON valide (`placesList.place: []`) — traité explicitement comme une absence
 échec, contrairement à Nominatim qui renvoyait un tableau vide en 200. Vérifié réel : résultats plus
 riches que Nominatim (inclut directement les arrêts Tisséo et POI comme les stations VélôToulouse et
 Citiz) ; suite E2E Playwright rejouée avec succès contre la stack complète.
+
+## Phase 7 — F4 calculateur d'empreinte carbone
+
+Découpée en 4 branches séquentielles (`feat/carbon-ademe-table`, `feat/trajets-effectues`,
+`feat/carbone-consumer`, `feat/web-mon-impact`), même convention qu'aux phases précédentes.
+
+- **Table ADEME versionnée** (`carbone/facteurs-ademe.ts`, version 2026-08-20) : source unique
+  pour toute l'application — remplace la table d'estimation approximative de la Phase 6
+  (supprimée) plutôt que de garder deux chiffres différents pour le même concept. Chaque facteur
+  cite sa source précise (Base Carbone/Empreinte ADEME, ou données d'opérateurs de référence type
+  RATP quand Tisséo ne publie pas son propre facteur), avec une limite méthodologique documentée
+  explicitement dans le code : les sources mélangent phase d'usage seule (bus/métro/tram/voiture)
+  et cycle de vie complet (trottinette/scooter, seule donnée ADEME disponible et la plus
+  pertinente pour du free-floating dont l'impact réel est dominé par la logistique de collecte).
+  Recherche des sources primaires plutôt qu'un appel à un service (rien à vérifier en direct pour
+  une table de référence) — 9 tests dédiés, le calcul carbone étant le « cœur évalué » du projet.
+- **`POST /api/v1/trajets`** : persiste un itinéraire réellement effectué et publie l'évènement
+  `TrajetEffectue` (`@nestjs/event-emitter`, nouvellement installé) — l'évènement ne transporte
+  que des faits bruts (mode + distance par segment), jamais une conclusion déjà calculée : chaque
+  consommateur (carbone, puis gamification en Phase 8) dérive son propre état, vrai découplage et
+  pas une simple notification. RGPD par construction : `EnregistrerTrajetDto` n'a pas de champ
+  « trace » — avec `forbidNonWhitelisted` actif globalement, en envoyer un fait rejeter la requête
+  (400), vérifié en conditions réelles. Les colonnes `geography` (Unsupported() dans Prisma) ne
+  passent pas par `create()` : nouvelle méthode `creerItineraireEffectue()` en SQL natif,
+  transactionnelle.
+- **Module carbone consommateur** : `CarboneListener` écoute `TrajetEffectue` sans importer le
+  module trajets au-delà de son contrat d'évènement, recalcule son propre CO2 à partir des faits
+  bruts, persiste `EmpreinteCarbone` (CO2 réel + comparatif voiture évité, jamais négatif).
+  Dégradation gracieuse : un évènement en échec est loggé, ne fait jamais planter le process.
+  `GET /api/v1/moi/impact` agrège le CO2 évité cumulé et le convertit en équivalent concret (km
+  voiture évités).
+- **Écran « Mon impact »** : ferme la boucle Phase 6 → Phase 7 — sur `/planificateur`, un bouton
+  « J'ai fait ce trajet » apparaît sous l'itinéraire sélectionné et poste directement les segments
+  déjà calculés, sans ressaisie. `/mon-impact` affiche le chiffre dominant (km voiture évités),
+  les stats cumulées et l'historique.
+- **Deux bugs réels découverts en vérifiant la branche 4 de bout en bout** (ni l'un ni l'autre
+  n'était visible sur les jeux de coordonnées testés en Phase 6) :
+  1. `perturbations.util.ts` (Phase 6) faisait retomber le rapprochement d'une perturbation sur
+     `routeId` dès que `voyageId` ne correspondait pas. Une ligne très fréquentée peut avoir des
+     dizaines d'entités de perturbation actives simultanément : ce filet de sécurité annulait des
+     itinéraires parfaitement valides dès qu'un *autre* voyage de la même ligne était perturbé —
+     vérifié en réel, la ligne 99 avait 22 perturbations actives et vidait systématiquement les
+     résultats de recherche pour cette ligne. Corrigé : rapprochement uniquement par `voyageId`.
+  2. `EnregistrerTrajetDto` exigeait un entier pour `distanceMetres`, mais OTP renvoie des
+     distances fractionnaires (ex. 543,78 m) — tout enregistrement réel échouait en 400. Validation
+     assouplie, arrondi appliqué uniquement à la persistance (colonne Postgres `INTEGER`).
+- Comme aux phases précédentes, chaque branche validée par un test réel contre la vraie stack
+  avant merge `--no-ff` ; le scénario e2e formel « inscription → planification → consultation
+  impact » reste le sujet dédié de la Phase 11, pas anticipé ici.
