@@ -6,6 +6,7 @@ import {
   IsInt,
   IsLatitude,
   IsLongitude,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -36,7 +37,9 @@ class SegmentEffectueDto {
   @Type(() => CoordonneesDto)
   arrivee!: CoordonneesDto;
 
-  @IsInt()
+  // Pas @IsInt() : OTP renvoie des distances fractionnaires (ex. 543.78 m).
+  // Arrondi cote service avant persistance (colonne Postgres INTEGER).
+  @IsNumber()
   @Min(0)
   distanceMetres!: number;
 

@@ -41,7 +41,10 @@ export class TrajetsService {
       dto.segments.map(async (segment, index) => ({
         ordre: index,
         mode: segment.mode,
-        distanceMetres: segment.distanceMetres,
+        // Colonne Postgres INTEGER : OTP renvoie des distances
+        // fractionnaires (ex. 543.78 m), arrondies uniquement a la
+        // persistance — le calcul CO2 ci-dessous reste sur la valeur exacte.
+        distanceMetres: Math.round(segment.distanceMetres),
         dureeSecondes: segment.dureeSecondes,
         co2Grammes: calculerCo2Grammes(segment.mode, segment.distanceMetres),
         operateurId: segment.operateur
