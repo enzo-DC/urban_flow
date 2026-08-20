@@ -4,11 +4,11 @@ import {
   calculerCo2EviteGrammes,
   calculerCo2Grammes,
 } from '../carbone/facteurs-ademe';
-import { PrismaService } from '../prisma/prisma.service';
 import {
   TRAJET_EFFECTUE_EVENT,
   TrajetEffectueEvent,
 } from '../trajets/events/trajet-effectue.event';
+import { GamificationService } from './gamification.service';
 import { calculerPoints, trajetSuspect } from './points.util';
 
 /**
@@ -22,7 +22,7 @@ import { calculerPoints, trajetSuspect } from './points.util';
 export class GamificationListener {
   private readonly logger = new Logger(GamificationListener.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly gamification: GamificationService) {}
 
   @OnEvent(TRAJET_EFFECTUE_EVENT)
   async handleTrajetEffectue(event: TrajetEffectueEvent): Promise<void> {
@@ -51,9 +51,10 @@ export class GamificationListener {
 
       if (points <= 0) return;
 
-      await this.prisma.recompense.create({
-        data: { utilisateurId: event.utilisateurId, type: 'trajet', points },
-      });
+      await this.gamification.attribuerPointsEtVerifierPaliers(
+        event.utilisateurId,
+        points,
+      );
     } catch (error) {
       // Un evenement en echec ne doit jamais faire planter le process :
       // l'utilisateur a deja recu la confirmation de son trajet, seuls les
