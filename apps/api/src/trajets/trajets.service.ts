@@ -84,6 +84,7 @@ export class TrajetsService {
         dto.segments.map((s) => ({
           mode: s.mode,
           distanceMetres: s.distanceMetres,
+          dureeSecondes: s.dureeSecondes,
         })),
       ),
     );

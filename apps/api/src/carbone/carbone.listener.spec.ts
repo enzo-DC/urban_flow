@@ -15,8 +15,8 @@ describe('CarboneListener', () => {
     const prisma = buildPrisma();
     const listener = new CarboneListener(prisma);
     const event = new TrajetEffectueEvent('trajet-1', 'user-1', [
-      { mode: 'marche', distanceMetres: 500 },
-      { mode: 'bus', distanceMetres: 3000 },
+      { mode: 'marche', distanceMetres: 500, dureeSecondes: 400 },
+      { mode: 'bus', distanceMetres: 3000, dureeSecondes: 900 },
     ]);
 
     await listener.handleTrajetEffectue(event);
@@ -37,7 +37,7 @@ describe('CarboneListener', () => {
     );
     const listener = new CarboneListener(prisma);
     const event = new TrajetEffectueEvent('trajet-1', 'user-1', [
-      { mode: 'marche', distanceMetres: 500 },
+      { mode: 'marche', distanceMetres: 500, dureeSecondes: 400 },
     ]);
 
     await expect(listener.handleTrajetEffectue(event)).resolves.toBeUndefined();
