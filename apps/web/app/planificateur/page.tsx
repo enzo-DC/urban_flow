@@ -8,6 +8,18 @@ export default function PlanificateurPage() {
           <h1>Planifier un trajet</h1>
         </div>
         <PlanificateurForm />
+
+        <p className="privacy-copy">
+          Recherche d&rsquo;adresses : données Tisséo, sous licence{' '}
+          <a
+            href="https://data.toulouse-metropole.fr/page/licence"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            ODbL
+          </a>
+          .
+        </p>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import type { NominatimGeocodageService } from '../integrations/geocoding/nominatim-geocodage.service';
+import type { TisseoGeocodageService } from '../integrations/geocoding/tisseo-geocodage.service';
 import { LieuxController } from './lieux.controller';
 
 describe('LieuxController', () => {
@@ -11,7 +11,7 @@ describe('LieuxController', () => {
     ];
     const geocodage = {
       rechercherAdresse: jest.fn().mockResolvedValue(resultats),
-    } as unknown as NominatimGeocodageService;
+    } as unknown as TisseoGeocodageService;
 
     const controller = new LieuxController(geocodage);
     const result = await controller.rechercher({ q: 'Place du Capitole' });
