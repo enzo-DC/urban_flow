@@ -95,8 +95,8 @@ describe('ItinerairesService', () => {
 
     expect(reponse.itineraires).toHaveLength(1);
     expect(reponse.itineraires[0].dureeSecondes).toBe(900);
-    expect(reponse.itineraires[0].co2Grammes).toBe(309); // bus 103g/km * 3km
-    expect(reponse.itineraires[0].segments[0].co2Grammes).toBe(309);
+    expect(reponse.itineraires[0].co2Grammes).toBe(276); // bus 92g/km * 3km
+    expect(reponse.itineraires[0].segments[0].co2Grammes).toBe(276);
     expect(reponse.disponibilites).toEqual([
       { id: 'v1', mode: 'velo', position: DEPART, disponible: 4 },
     ]);

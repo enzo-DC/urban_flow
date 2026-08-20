@@ -13,8 +13,8 @@ import {
 import { TisseoGtfsRtService } from '../integrations/gtfs-rt/tisseo-gtfs-rt.service';
 import { OtpClientService } from '../integrations/otp/otp-client.service';
 import type { OtpItineraire } from '../integrations/otp/otp.types';
+import { calculerCo2Grammes } from '../carbone/facteurs-ademe';
 import { RedisService } from '../redis/redis.service';
-import { calculerCo2Grammes } from './co2/facteurs-co2';
 import type { RequeteItineraireDto } from './dto/requete-itineraire.dto';
 import { appliquerPerturbations } from './perturbations.util';
 
