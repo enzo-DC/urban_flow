@@ -184,3 +184,17 @@ toujours vérifier un flux en conditions réelles avant d'écrire du code contre
 - Comme aux phases précédentes, chaque branche validée par un test réel contre la vraie stack
   (script jetable, supprimé après vérification) en plus de la suite de tests unitaires mockés,
   avant merge `--no-ff`.
+
+### Addendum — `feat/geocoding-tisseo` (2026-08-20)
+
+Tisséo a répondu à la demande de clé (opendata@tisseo.fr, 2026-08-18) : `NominatimGeocodageService`
+remplacé par `TisseoGeocodageService` (`GET https://api.tisseo.fr/v2/places.json`). Usage
+volontairement limité à ce que le mail Tisséo autorise explicitement — recherche à la demande pour
+un calcul d'itinéraire, jamais l'extraction en masse du référentiel arrêts/lignes (qui reste sur le
+jeu de données GTFS déjà utilisé pour le graphe OTP). Attribution ODbL + lien vers la licence ajoutés
+sur l'écran planificateur (obligation explicite des conditions d'usage). Piège réel découvert en
+testant contre la vraie API : un terme vide ou sans résultat renvoie un statut HTTP 404 avec un corps
+JSON valide (`placesList.place: []`) — traité explicitement comme une absence de résultats, pas un
+échec, contrairement à Nominatim qui renvoyait un tableau vide en 200. Vérifié réel : résultats plus
+riches que Nominatim (inclut directement les arrêts Tisséo et POI comme les stations VélôToulouse et
+Citiz) ; suite E2E Playwright rejouée avec succès contre la stack complète.
