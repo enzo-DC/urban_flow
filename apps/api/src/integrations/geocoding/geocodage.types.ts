@@ -2,8 +2,14 @@ import type { LieuGeocode } from '@urbanflow/shared';
 
 export type { LieuGeocode };
 
-export interface NominatimResultat {
-  display_name: string;
-  lat: string;
-  lon: string;
+export interface TisseoPlace {
+  label: string;
+  x: string;
+  y: string;
+}
+
+export interface TisseoPlacesResponse {
+  placesList: {
+    place: TisseoPlace[];
+  };
 }

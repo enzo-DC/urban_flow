@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { FOURNISSEUR_MOBILITE_TOKEN } from './fournisseur-mobilite.interface';
-import { NominatimGeocodageService } from './geocoding/nominatim-geocodage.service';
+import { TisseoGeocodageService } from './geocoding/tisseo-geocodage.service';
 import { VeloToulouseProvider } from './gbfs/velo-toulouse.provider';
 import { TisseoGtfsRtService } from './gtfs-rt/tisseo-gtfs-rt.service';
 import { OtpClientService } from './otp/otp-client.service';
@@ -14,7 +14,7 @@ import { YegoScooterProvider } from './yego/yego-scooter.provider';
     YegoScooterProvider,
     TisseoGtfsRtService,
     OtpClientService,
-    NominatimGeocodageService,
+    TisseoGeocodageService,
     {
       provide: FOURNISSEUR_MOBILITE_TOKEN,
       useFactory: (velo: VeloToulouseProvider, yego: YegoScooterProvider) => [
@@ -28,7 +28,7 @@ import { YegoScooterProvider } from './yego/yego-scooter.provider';
     FOURNISSEUR_MOBILITE_TOKEN,
     TisseoGtfsRtService,
     OtpClientService,
-    NominatimGeocodageService,
+    TisseoGeocodageService,
   ],
 })
 export class IntegrationsModule {}

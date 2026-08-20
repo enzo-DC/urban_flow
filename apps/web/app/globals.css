@@ -448,6 +448,11 @@ button {
   line-height: 1.6;
   color: var(--slate);
 }
+.privacy-copy a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+}
 
 .danger-zone {
   border: 1.5px solid #e6c79c;
