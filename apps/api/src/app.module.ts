@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CarboneModule } from './carbone/carbone.module';
+import { GamificationModule } from './gamification/gamification.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { ItinerairesModule } from './itineraires/itineraires.module';
 import { LieuxModule } from './lieux/lieux.module';
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.module';
     LieuxModule,
     TrajetsModule,
     CarboneModule,
+    GamificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

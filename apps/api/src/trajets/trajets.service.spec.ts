@@ -125,8 +125,8 @@ describe('TrajetsService', () => {
         trajetId: 'trajet-1',
         utilisateurId: 'user-1',
         segments: [
-          { mode: 'marche', distanceMetres: 500 },
-          { mode: 'bus', distanceMetres: 3000 },
+          { mode: 'marche', distanceMetres: 500, dureeSecondes: 400 },
+          { mode: 'bus', distanceMetres: 3000, dureeSecondes: 900 },
         ],
       }),
     );
