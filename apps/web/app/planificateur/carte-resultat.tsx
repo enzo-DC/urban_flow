@@ -11,7 +11,7 @@ const LABEL_MODE: Record<ModeTransport, string> = {
   voiture: 'Voiture',
 };
 
-function formatDuree(secondes: number): string {
+export function formatDuree(secondes: number): string {
   const minutes = Math.round(secondes / 60);
   if (minutes < 60) return `${minutes} min`;
   const heures = Math.floor(minutes / 60);
