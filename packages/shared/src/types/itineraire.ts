@@ -17,4 +17,6 @@ export interface RequeteItineraire {
   arrivee: Coordonnees;
   modesAutorises?: Segment['mode'][];
   critereTri?: CritereTri;
+  /** Privilegie les itineraires accessibles PMR (GTFS wheelchair). */
+  accessible?: boolean;
 }

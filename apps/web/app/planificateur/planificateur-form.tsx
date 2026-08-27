@@ -8,7 +8,7 @@ import type {
 } from '@urbanflow/shared';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CarteResultat, formatDuree } from './carte-resultat';
 import { ChampAdresse } from './champ-adresse';
 
@@ -32,6 +32,7 @@ export function PlanificateurForm() {
   const [depart, setDepart] = useState<LieuGeocode | null>(null);
   const [arrivee, setArrivee] = useState<LieuGeocode | null>(null);
   const [critereTri, setCritereTri] = useState<CritereTri>('duree');
+  const [accessible, setAccessible] = useState(false);
   const [itineraires, setItineraires] = useState<Itineraire[]>([]);
   const [selectionId, setSelectionId] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -43,6 +44,25 @@ export function PlanificateurForm() {
 
   const itineraireSelectionne =
     itineraires.find((it) => it.id === selectionId) ?? itineraires[0] ?? null;
+
+  // Pre-coche le trajet accessible si l'utilisateur connecte l'a deja
+  // demande dans son profil ; reste decochable au cas par cas, et ne fait
+  // rien pour un invite (401 ignore, le planificateur reste utilisable sans
+  // compte).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const res = await fetch('/api/profil').catch(() => null);
+      if (!res?.ok || cancelled) return;
+      const data = (await res.json()) as {
+        profilMobilite: { besoinsAccessibilite: boolean } | null;
+      };
+      if (data.profilMobilite?.besoinsAccessibilite) setAccessible(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function utiliserMaPosition() {
     if (!navigator.geolocation) {
@@ -90,6 +110,7 @@ export function PlanificateurForm() {
           depart: depart.position,
           arrivee: arrivee.position,
           critereTri,
+          accessible,
         }),
       });
       if (!res.ok) {
@@ -188,6 +209,21 @@ export function PlanificateurForm() {
             {critere.label}
           </button>
         ))}
+      </div>
+
+      <div className="toggle-row">
+        <span className="label">
+          <strong>Itinéraire accessible</strong>
+          <span>Privilégie les options accessibles PMR</span>
+        </span>
+        <button
+          type="button"
+          className="toggle"
+          role="switch"
+          aria-checked={accessible}
+          aria-label="Itinéraire accessible"
+          onClick={() => setAccessible((value) => !value)}
+        />
       </div>
 
       <button

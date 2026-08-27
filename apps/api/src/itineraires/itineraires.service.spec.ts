@@ -103,10 +103,28 @@ describe('ItinerairesService', () => {
 
     // eslint-disable-next-line @typescript-eslint/unbound-method -- jest.fn() mock.
     expect(redis.client.set).toHaveBeenCalledWith(
-      expect.stringContaining('itineraires:43.6045,1.4442:43.6355,1.3902'),
+      expect.stringContaining(
+        'itineraires:standard:43.6045,1.4442:43.6355,1.3902',
+      ),
       expect.any(String),
       'EX',
       60,
+    );
+  });
+
+  it('transmet accessible a OTP et isole son cache de la recherche standard', async () => {
+    const otp = buildOtp([otpItineraire()]);
+    const gtfsRt = buildGtfsRt([]);
+    const redis = buildRedis(null);
+
+    const service = new ItinerairesService(otp, gtfsRt, [], redis);
+    await service.planifier({ ...REQUETE, accessible: true });
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- jest.fn() mock.
+    expect(otp.planifier).toHaveBeenCalledWith(DEPART, ARRIVEE, true);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- jest.fn() mock.
+    expect(redis.client.get).toHaveBeenCalledWith(
+      expect.stringContaining('itineraires:pmr:'),
     );
   });
 

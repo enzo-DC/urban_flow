@@ -50,7 +50,11 @@ export class ItinerairesService {
   private async recupererBrut(
     requete: RequeteItineraireDto,
   ): Promise<ReponseItineraires> {
-    const cle = this.cleCache(requete.depart, requete.arrivee);
+    const cle = this.cleCache(
+      requete.depart,
+      requete.arrivee,
+      requete.accessible ?? false,
+    );
     const cached = await this.redis.client.get(cle);
     if (cached) {
       return JSON.parse(cached) as ReponseItineraires;
@@ -62,7 +66,11 @@ export class ItinerairesService {
     const [[otpResultat, gtfsRtResultat], fournisseurResultats] =
       await Promise.all([
         Promise.allSettled([
-          this.otp.planifier(requete.depart, requete.arrivee),
+          this.otp.planifier(
+            requete.depart,
+            requete.arrivee,
+            requete.accessible ?? false,
+          ),
           this.gtfsRt.getPerturbations(),
         ]),
         Promise.allSettled(this.fournisseurs.map((f) => f.disponibilites())),
@@ -134,8 +142,12 @@ export class ItinerairesService {
     return copie;
   }
 
-  private cleCache(depart: Coordonnees, arrivee: Coordonnees): string {
+  private cleCache(
+    depart: Coordonnees,
+    arrivee: Coordonnees,
+    accessible: boolean,
+  ): string {
     const r = (n: number) => n.toFixed(4);
-    return `itineraires:${r(depart.latitude)},${r(depart.longitude)}:${r(arrivee.latitude)},${r(arrivee.longitude)}`;
+    return `itineraires:${accessible ? 'pmr' : 'standard'}:${r(depart.latitude)},${r(depart.longitude)}:${r(arrivee.latitude)},${r(arrivee.longitude)}`;
   }
 }

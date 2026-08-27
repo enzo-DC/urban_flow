@@ -6,6 +6,7 @@ import {
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsIn,
   IsLatitude,
   IsLongitude,
@@ -40,4 +41,8 @@ export class RequeteItineraireDto {
   @IsOptional()
   @IsIn(CRITERES_TRI)
   critereTri?: CritereTri;
+
+  @IsOptional()
+  @IsBoolean()
+  accessible?: boolean;
 }
