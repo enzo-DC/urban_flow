@@ -12,7 +12,7 @@ friction rencontrés et les ajustements faits par rapport au plan initial.
 - [x] Phase 6 — F2 planificateur
 - [x] Phase 7 — F4 carbone
 - [x] Phase 8 — Gamification
-- [ ] Phase 9 — PWA
+- [x] Phase 9 — PWA
 - [ ] Phase 10 — A11y / sécurité / éco
 - [ ] Phase 11 — Tests & CI
 - [ ] Phase 12 — Déploiement OVH
@@ -299,3 +299,60 @@ Découpée en 4 branches séquentielles (`feat/gamification-points`, `feat/gamif
   manuelle en navigateur réel avant la soutenance, comme pour le rendu de la carte en Phase 6.
 - Comme aux phases précédentes, chaque branche validée par un test réel contre la vraie stack
   avant merge `--no-ff`.
+
+## Phase 9 — PWA
+
+Découpée en 4 branches (`chore/pwa-serwist-manifest`, `feat/pwa-cache-strategies`,
+`feat/pwa-offline-storage`, `chore/pwa-installability`), la dernière purement de vérification
+(aucun changement de code, cf. plus bas).
+
+- **Turbopack, pas webpack** : le projet tourne sous Turbopack (défaut de Next 16). La première
+  tentative (`@serwist/next`, base webpack) échoue au build (`InjectManifest` incompatible
+  Turbopack). Basculé sur `@serwist/turbopack`, dont l'architecture diffère nettement : pas
+  d'écriture statique dans `public/sw.js`, le service worker est compilé à la volée par une route
+  dynamique (`app/serwist/[path]/route.ts`) et servi à `/serwist/sw.js` ; `SerwistProvider`
+  (`app/layout.tsx`) prend en charge l'enregistrement côté client, remplaçant l'appel manuel
+  `navigator.serviceWorker.register()` de la Phase 8.
+- **esbuild-wasm plante sous Windows** (chemin de working directory jugé non-POSIX par son layout
+  interne) lors de la compilation du service worker. `useNativeEsbuild` laissé à son défaut par
+  plateforme plutôt que forcé : natif sous Windows (dev), esbuild-wasm sous Linux (image Docker) —
+  les deux paquets installés côte à côte pour que chaque environnement prenne le bon.
+- **Stratégies de cache différenciées, évaluées avant `defaultCache`** (`app/sw-runtime-caching.ts`) :
+  app shell (`/_next/static`, cache-first — hashé par contenu, jamais périmé), tuiles OSM
+  (cache-first + expiration, la politique d'usage OSM demande explicitement un cache client),
+  `/api/*` hors `/api/auth` (network-first + repli cache, 4 s de timeout). Vérifié contre le vrai
+  serveur de tuiles et la vraie API : les caches se remplissent bien de vraies réponses.
+- **Piège réel** : `defaultCache` se réduit volontairement à un simple `NetworkOnly` généralisé en
+  mode `next dev` (comportement voulu par Serwist pour éviter la confusion de cache en
+  développement) — un premier test de navigation hors-ligne y échouait donc systématiquement,
+  y compris avec le mécanisme de repli (`fallbacks`) correctement câblé. Le même test refait contre
+  un vrai build de production (`next build && next start`, ce qui tourne réellement dans Docker)
+  passe sans accroc. Le mode dev n'est pas la référence pour valider un comportement de cache — un
+  écueil à garder en tête pour toute vérification PWA future.
+- **IndexedDB pour l'historique carbone et le profil** (`app/_lib/offline-store.ts`, magasin
+  clé/valeur minimal sans dépendance externe) : `mon-impact-content.tsx` et `profil-form.tsx`
+  sauvegardent la dernière réponse API réussie et s'y replient si le réseau échoue. Corrige au
+  passage un vrai bug préexistant dans les deux composants : sans `try/catch` autour du fetch
+  initial, un échec réseau laissait l'écran bloqué indéfiniment sur « Chargement… », même avec des
+  données en cache.
+- **Écran `/hors-ligne`** : repli du service worker pour toute navigation document qui échoue —
+  le scénario réel de la DoD (« l'app installée s'ouvre en mode avion ») est une navigation dure
+  (ouverture d'icône), pas une navigation douce interne à l'app. Précaché explicitement
+  (`additionalPrecacheEntries`, révision = horodatage de build plutôt qu'un hash git, indisponible
+  dans l'image Docker) et branché via `fallbacks.entries`. C'est un client component qui lit
+  directement l'IndexedDB, sans dépendance serveur — impossible de vérifier le cookie de session
+  hors-ligne, donc pas de logique d'auth sur cette page.
+- **Vérification de l'installabilité** : Lighthouse ≥ 10 a retiré ses audits PWA dédiés
+  (`service-worker`, `installable-manifest`, etc.) de son cœur — `--list-all-audits` le confirme,
+  aucun de ces identifiants n'existe plus. Vérifié à la place directement via le mécanisme Chrome
+  sous-jacent que ces audits utilisaient eux-mêmes (`Page.getInstallabilityErrors` en CDP, plus
+  autoritaire que Lighthouse ne l'a jamais été) : zéro erreur d'installabilité contre le vrai
+  conteneur Docker, manifest valide (icônes, nom, `display: standalone`, couleur de thème) confirmé
+  par `Page.getAppManifest`. Le HTTPS proprement dit reste hors-scope ici (localhost fait exception
+  aux yeux de Chrome) — sera couvert par Caddy/Let's Encrypt en Phase 12.
+- Nettoyage : les SVG du gabarit Next.js de départ (jamais réutilisés depuis la réécriture de
+  `app/page.tsx`) supprimés au passage de la première branche.
+- Comme aux phases précédentes, chaque branche fonctionnelle validée par un test réel contre la
+  vraie stack (serveur de tuiles OSM, API réelle via un compte créé en direct, conteneur Docker
+  reconstruit) avant merge `--no-ff` ; la dernière branche, purement de vérification, n'a rien eu à
+  committer.
