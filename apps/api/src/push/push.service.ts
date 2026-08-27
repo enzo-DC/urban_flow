@@ -84,6 +84,15 @@ export class PushService implements OnModuleInit {
         },
         JSON.stringify(notification),
       );
+      // Marque l'abonnement comme reellement utilise — sert a la purge des
+      // abonnements devenus obsoletes sans jamais avoir declenche de 404/410
+      // (voir push.purge.service.ts).
+      await this.prisma.abonnementPush
+        .update({
+          where: { id: abonnement.id },
+          data: { derniereUtilisationLe: new Date() },
+        })
+        .catch(() => undefined);
     } catch (error) {
       const statusCode = (error as { statusCode?: number }).statusCode;
       // 404/410 : l'abonnement n'existe plus cote navigateur (desinstalle,
