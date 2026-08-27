@@ -13,7 +13,7 @@ friction rencontrés et les ajustements faits par rapport au plan initial.
 - [x] Phase 7 — F4 carbone
 - [x] Phase 8 — Gamification
 - [x] Phase 9 — PWA
-- [ ] Phase 10 — A11y / sécurité / éco
+- [x] Phase 10 — A11y / sécurité / éco
 - [ ] Phase 11 — Tests & CI
 - [ ] Phase 12 — Déploiement OVH
 
@@ -356,3 +356,77 @@ Découpée en 4 branches (`chore/pwa-serwist-manifest`, `feat/pwa-cache-strategi
   vraie stack (serveur de tuiles OSM, API réelle via un compte créé en direct, conteneur Docker
   reconstruit) avant merge `--no-ff` ; la dernière branche, purement de vérification, n'a rien eu à
   committer.
+
+## Phase 10 — Accessibilité, sécurité, éco-conception
+
+Découpée en 4 branches (`test/a11y-axe-core`, `feat/itineraire-pmr`, `feat/security-headers`,
+`feat/eco-conception`), chacune productrice de code cette fois (contrairement à la dernière
+branche de la Phase 9).
+
+- **axe-core** (`@axe-core/playwright`) intégré à un nouveau `e2e/accessibilite.spec.ts` couvrant
+  les pages principales, y compris connecté (impact, profil). Deux vraies violations modérées
+  trouvées et corrigées, pas seulement journalisées : `connexion`/`inscription` n'avaient aucun
+  `<h1>` (marque en `<strong>`), `planificateur` n'avait pas de landmark `<main>` contrairement
+  aux autres pages. Seules les violations *critiques* font échouer le test (règle du dossier) ;
+  les autres sont journalisées comme signal, pas comme blocage.
+- **Itinéraires accessibles PMR** : introspection GraphQL contre la vraie instance OTP pour
+  trouver le bon paramètre (`preferences.accessibility.wheelchair.enabled` sur `planConnection`,
+  pas un argument top-level comme sur d'autres versions d'OTP). `accessibilityScore` (Leg/
+  Itinerary) reste `null` en permanence sur notre build (fonctionnalité sandbox IBI non activée) :
+  volontairement absent de la réponse plutôt qu'exposé pour rien. Effet réel vérifié avec de
+  vraies coordonnées (Capitole → Aéroport Blagnac) : 2 itinéraires bus (26 min) sans le filtre,
+  une seule marche à pied de 98 min avec — OTP écarte bien les trajets non accessibles. Corrige au
+  passage un bug latent : la clé de cache Redis ne dépendait que des coordonnées, une recherche
+  standard et PMR sur le même trajet se seraient écrasées. Le formulaire pré-coche le bouton si le
+  profil connecté a déjà `besoinsAccessibilite` — connecte enfin ce champ, jusque-là stocké mais
+  jamais exploité (trouvé lors de l'état des lieux de branche).
+- **CSP/HSTS** : la première tentative (nonce, recommandation par défaut de Next.js) échoue au
+  test réel — vérifié contre un vrai build de production, pas seulement en dev — car les nonces
+  exigent que *toutes* les pages soient en rendu dynamique, alors que `/connexion`,
+  `/inscription` et `/planificateur` sont statiques par choix. La doc officielle Next.js
+  documente explicitement ce compromis ("Without Nonces") : bascule sur une CSP statique
+  (`next.config.ts`, `script-src 'unsafe-inline'`). CORS restrictif déjà en place depuis la
+  Phase 4, rien à ajouter. Découverte notable : le mode `next dev` fait apparaître des faux
+  positifs axe-core (`link-in-text-block`) via son propre overlay de debug, disparus en
+  production — même piège dev-vs-prod que déjà rencontré en Phase 9, désormais un réflexe de
+  vérification systématique.
+- **helmet + `@nestjs/throttler`** côté API (CSP désactivée côté helmet, une API JSON pure n'en a
+  pas l'usage). Vérifié contre le vrai conteneur Docker, pas seulement des mocks : 6 tentatives de
+  connexion rapprochées renvoient 401×5 puis 429 ; reproduit une seconde fois après reconstruction
+  complète de la stack en fin de phase, toujours correct.
+- **Audit secrets** : recherche de motifs (clé/mot de passe en dur, blocs PEM, chaînes de
+  connexion, la vraie clé Tisséo) dans tout le code suivi par git — rien trouvé, `.env` n'est pas
+  versionné.
+- **Vrai bug trouvé par l'audit d'accessibilité, pas seulement constaté** : le conteneur de la
+  carte avait `role="img"` alors que MapLibre y injecte des contrôles focusables (zoom,
+  boussole) — viole `nested-interactive`. Corrigé en `role="region"`, vérifié à 0 violation contre
+  un vrai build de production.
+- **Éco-conception, état des lieux avant d'agir** (recherche dédiée) : next/image — aucune balise
+  `<img>` brute dans le projet, rien à migrer ; code-splitting — la carte (MapLibre) est déjà en
+  chargement paresseux, rien d'autre d'assez lourd identifié ; polling → WebSocket — aucun polling
+  côté frontend à remplacer, le seul rafraîchissement périodique (GTFS-RT, `@Interval` 45 s) est
+  un poll serveur vers Tisséo dont le flux externe n'offre pas de push, hors périmètre. Seul point
+  réellement actionnable : purge automatique. `Itineraire`/`Segment`/`Trajet`/`EmpreinteCarbone`/
+  `Recompense` sont l'historique permanent de l'utilisateur (le cœur de « Mon impact »), jamais
+  purgeables ; les refresh tokens expirent déjà nativement via Redis `EX`. Reste
+  `AbonnementPush`, qui peut devenir obsolète sans jamais déclencher le nettoyage réactif existant
+  (404/410 à l'envoi) : nouveau champ `derniereUtilisationLe` + purge quotidienne (`@Cron`,
+  90 jours d'inactivité — seuil volontairement long, un badge peut se débloquer une fois tous les
+  quelques mois). Vérifié contre la vraie base Postgres (4 abonnements de test à dates réelles,
+  la purge en supprime exactement les 2 attendus), pas seulement des mocks.
+- **Piège Prisma revisité** : la migration générée en `--create-only` contenait de nouveau les
+  `DROP INDEX` GIST parasites déjà documentés en Phase 8 — retirés avant application. Complication
+  supplémentaire cette fois : l'historique de migrations refusait de rejouer (checksum du fichier
+  déjà modifié en Phase 8) — résolu sans perte de données en supprimant puis regénérant
+  l'enregistrement via `prisma migrate resolve --applied`, puis application via `migrate deploy`
+  (non-interactif) après avoir tué des process `prisma migrate dev` orphelins qui tenaient un
+  verrou consultatif Postgres.
+- **Incident hors-code** : le disque C: est passé à 0 octet libre en cours de phase (cache Docker
+  WSL2 jamais compacté malgré les purges internes déjà faites en Phase 9). Nettoyage Docker complet
+  (cache de build + toutes les images inutilisées) puis compaction du disque virtuel WSL2 via
+  `diskpart` (`compact vdisk`) : 16,5 Go → 3,4 Go, ~21 Go récupérés sur l'hôte. Docker Desktop a
+  ensuite crashé une fois de plus en toute fin de phase (moteur WSL) — redémarré proprement après
+  avoir nettoyé les process orphelins.
+- Comme aux phases précédentes, chaque branche validée par un test réel contre la vraie stack
+  (instance OTP réelle interrogée en introspection GraphQL, conteneur Docker reconstruit, vraie
+  base Postgres) avant merge `--no-ff`.
