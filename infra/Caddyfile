@@ -1,0 +1,16 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	reverse_proxy web:3000
+
+	encode gzip
+
+	header {
+		# Defense en profondeur — la CSP applicative reste la source de verite
+		# (apps/web/next.config.ts) ; Caddy ajoute juste HSTS ici puisque c'est
+		# le point qui termine reellement le TLS.
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+	}
+}
