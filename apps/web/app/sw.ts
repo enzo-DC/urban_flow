@@ -21,6 +21,17 @@ const serwist = new Serwist({
   // Nos regles d'abord (premiere regle qui matche gagne) ; le reste des
   // requetes retombe sur la liste recommandee par Next.js.
   runtimeCaching: [...runtimeCachingUrbanFlow, ...defaultCache],
+  // Repli hors-ligne pour toute navigation document qui echoue (ouverture
+  // de l'app installee en mode avion par ex.) : /hors-ligne est precachee
+  // (voir app/serwist/[path]/route.ts) et lit ses donnees en IndexedDB.
+  fallbacks: {
+    entries: [
+      {
+        url: '/hors-ligne',
+        matcher: ({ request }) => request.destination === 'document',
+      },
+    ],
+  },
 });
 
 serwist.addEventListeners();

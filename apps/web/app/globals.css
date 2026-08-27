@@ -492,6 +492,11 @@ button {
   color: var(--carbon);
   border: 1px solid #bfe0cd;
 }
+.form-banner.info {
+  background: var(--surface-primary);
+  color: var(--primary-dark);
+  border: 1px solid var(--border);
+}
 
 /* ============ Planificateur (carte, recherche, résultats) ============ */
 
