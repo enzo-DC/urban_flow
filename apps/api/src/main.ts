@@ -1,4 +1,5 @@
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -7,6 +8,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api/v1');
   app.use(cookieParser());
+  // API JSON pure (aucune page HTML servie) : la CSP par defaut de helmet
+  // n'a pas d'interet ici, contrairement aux en-tetes de durcissement
+  // (X-Content-Type-Options, HSTS, etc.) — CSP est geree cote web
+  // (apps/web/next.config.ts) qui sert reellement du HTML.
+  app.use(helmet({ contentSecurityPolicy: false }));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
