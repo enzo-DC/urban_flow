@@ -90,6 +90,27 @@ describe('OtpClientService', () => {
     ]);
   });
 
+  it('transmet preferences.accessibility.wheelchair.enabled selon le parametre accessible', async () => {
+    let corpsRecu: { variables: { preferences: unknown } } | undefined;
+    global.fetch = jest.fn((_url: string, init: RequestInit) => {
+      corpsRecu = JSON.parse(init.body as string) as typeof corpsRecu;
+      return Promise.resolve(
+        jsonResponse({ data: { planConnection: { edges: [] } } }),
+      );
+    });
+
+    const client = new OtpClientService(buildConfig());
+    await client.planifier(
+      { latitude: 0, longitude: 0 },
+      { latitude: 0, longitude: 0 },
+      true,
+    );
+
+    expect(corpsRecu?.variables.preferences).toEqual({
+      accessibility: { wheelchair: { enabled: true } },
+    });
+  });
+
   it('retire le prefixe de feed OTP des identifiants de ligne et de voyage', async () => {
     global.fetch = jest.fn().mockResolvedValue(
       jsonResponse({

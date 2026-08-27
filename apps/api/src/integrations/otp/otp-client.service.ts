@@ -12,8 +12,8 @@ import type {
 const TIMEOUT_MS = 4000;
 
 const PLAN_QUERY = `
-  query Plan($origine: PlanLabeledLocationInput!, $destination: PlanLabeledLocationInput!) {
-    planConnection(origin: $origine, destination: $destination) {
+  query Plan($origine: PlanLabeledLocationInput!, $destination: PlanLabeledLocationInput!, $preferences: PlanPreferencesInput) {
+    planConnection(origin: $origine, destination: $destination, preferences: $preferences) {
       edges {
         node {
           duration
@@ -69,6 +69,7 @@ export class OtpClientService {
   async planifier(
     depart: Coordonnees,
     arrivee: Coordonnees,
+    accessible = false,
   ): Promise<OtpItineraire[]> {
     try {
       const response = await fetchWithTimeout(this.graphqlUrl, {
@@ -80,6 +81,15 @@ export class OtpClientService {
           variables: {
             origine: versLocation(depart),
             destination: versLocation(arrivee),
+            // wheelchair.enabled fait bien plus que filtrer un champ : verifie
+            // en conditions reelles, OTP ecarte les trajets dont les arrets ou
+            // vehicules ne sont pas GTFS wheelchair_accessible (repli sur une
+            // marche a pied bien plus longue si aucune option accessible
+            // n'existe). accessibilityScore reste toujours `null` sur notre
+            // build OTP (fonctionnalite sandbox non activee) : pas expose.
+            preferences: {
+              accessibility: { wheelchair: { enabled: accessible } },
+            },
           },
         }),
       });
