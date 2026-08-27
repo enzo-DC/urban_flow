@@ -14,7 +14,7 @@ export default function ConnexionPage() {
           <span className="mark" aria-hidden="true">
             U
           </span>
-          <strong>UrbanFlow</strong>
+          <h1>UrbanFlow</h1>
           <span>Se connecter à mon compte</span>
         </div>
 

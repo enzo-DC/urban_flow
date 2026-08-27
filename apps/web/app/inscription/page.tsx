@@ -14,7 +14,7 @@ export default function InscriptionPage() {
           <span className="mark" aria-hidden="true">
             U
           </span>
-          <strong>Créer un compte</strong>
+          <h1>Créer un compte</h1>
         </div>
 
         <InscriptionForm />
