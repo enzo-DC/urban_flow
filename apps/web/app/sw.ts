@@ -3,6 +3,7 @@
 import { defaultCache } from '@serwist/turbopack/worker';
 import { Serwist } from 'serwist';
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist';
+import { runtimeCachingUrbanFlow } from './sw-runtime-caching';
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -17,7 +18,9 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  // Nos regles d'abord (premiere regle qui matche gagne) ; le reste des
+  // requetes retombe sur la liste recommandee par Next.js.
+  runtimeCaching: [...runtimeCachingUrbanFlow, ...defaultCache],
 });
 
 serwist.addEventListeners();

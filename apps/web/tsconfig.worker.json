@@ -10,5 +10,5 @@
     "moduleResolution": "bundler",
     "isolatedModules": true
   },
-  "include": ["app/sw.ts"]
+  "include": ["app/sw.ts", "app/sw-runtime-caching.ts"]
 }
