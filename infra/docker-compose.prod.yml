@@ -1,0 +1,93 @@
+services:
+  db:
+    image: postgis/postgis:18-3.6
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  cache:
+    image: valkey/valkey:9
+    restart: unless-stopped
+    volumes:
+      - cache_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Necessite un graphe construit dans ./otp (graph.obj) — voir infra/otp/README.md.
+  otp:
+    image: docker.io/opentripplanner/opentripplanner:2.9.0
+    restart: unless-stopped
+    command: ["--load"]
+    environment:
+      JAVA_OPTS: "-Xmx6G"
+    volumes:
+      - ./otp:/var/opentripplanner
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  # Image construite et publiee sur GHCR par le pipeline GitHub Actions
+  # (.github/workflows/deploy.yml) — jamais construite sur le VPS.
+  api:
+    image: ghcr.io/enzo-dc/urban_flow-api:latest
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    # Jamais de port publie : l'API n'est jamais appelee directement par le
+    # navigateur (role BFF de web, voir markdown/claude-rule-frontend.md).
+    # Seul le reseau interne Docker (nom de service "api") y donne acces.
+
+  web:
+    image: ghcr.io/enzo-dc/urban_flow-web:latest
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      PORT: 3000
+    depends_on:
+      - api
+    # Pas de port publie non plus : seul Caddy (le seul service expose a
+    # Internet) y accede via le reseau interne.
+
+  # Frontal TLS (Let's Encrypt automatique) — seul service avec des ports
+  # publies. DOMAIN et ACME_EMAIL viennent du .env du VPS (jamais commits).
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  db_data:
+  cache_data:
+  caddy_data:
+  caddy_config:
