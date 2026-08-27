@@ -39,8 +39,9 @@ export function NotificationsPush() {
         return;
       }
 
-      const reg = await navigator.serviceWorker.register('/sw.js');
-      await navigator.serviceWorker.ready;
+      // Le service worker est deja enregistre globalement par SerwistProvider
+      // (app/layout.tsx) ; on attend juste qu'il soit pret.
+      const reg = await navigator.serviceWorker.ready;
 
       const cleRes = await fetch('/api/push/cle-publique');
       const { clePublique } = (await cleRes.json()) as { clePublique: string };

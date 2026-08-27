@@ -1,4 +1,5 @@
-import type { Metadata } from 'next';
+import { SerwistProvider } from '@serwist/turbopack/react';
+import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
 
@@ -22,6 +23,10 @@ export const metadata: Metadata = {
     'Mobilité urbaine multimodale à Toulouse — itinéraires, empreinte carbone et récompenses.',
 };
 
+export const viewport: Viewport = {
+  themeColor: '#14589c',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,7 +34,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={inter.variable}>
-      <body>{children}</body>
+      <body>
+        <SerwistProvider swUrl="/serwist/sw.js">{children}</SerwistProvider>
+      </body>
     </html>
   );
 }

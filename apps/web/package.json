@@ -10,11 +10,15 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@serwist/turbopack": "^9.5.12",
     "@urbanflow/shared": "workspace:*",
+    "esbuild": "^0.28.2",
+    "esbuild-wasm": "^0.28.2",
     "maplibre-gl": "^6.3.0",
     "next": "16.2.12",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "serwist": "^9.5.12"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
