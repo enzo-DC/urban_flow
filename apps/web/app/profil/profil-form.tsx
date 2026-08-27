@@ -3,6 +3,7 @@
 import { MODES_TRANSPORT, type ModeTransport } from '@urbanflow/shared';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { lireHorsLigne, sauvegarderHorsLigne } from '../_lib/offline-store';
 
 const MODE_LABELS: Record<ModeTransport, string> = {
   marche: 'Marche',
@@ -31,6 +32,7 @@ export function ProfilForm() {
   const [besoinsAccessibilite, setBesoinsAccessibilite] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [horsLigne, setHorsLigne] = useState(false);
   const [message, setMessage] = useState<{
     kind: 'success' | 'error';
     text: string;
@@ -39,22 +41,38 @@ export function ProfilForm() {
   useEffect(() => {
     let cancelled = false;
 
+    function appliquer(data: ProfileData) {
+      setProfile(data);
+      setModesPreferes(data.profilMobilite?.modesPreferes ?? []);
+      setBesoinsAccessibilite(
+        data.profilMobilite?.besoinsAccessibilite ?? false,
+      );
+    }
+
     async function load() {
-      const res = await fetch('/api/profil');
-      if (res.status === 401) {
-        router.push('/connexion');
-        return;
+      try {
+        const res = await fetch('/api/profil');
+        if (res.status === 401) {
+          router.push('/connexion');
+          return;
+        }
+        if (!res.ok) throw new Error('reponse API non ok');
+
+        const data = (await res.json()) as ProfileData;
+        if (cancelled) return;
+        appliquer(data);
+        setHorsLigne(false);
+        setLoading(false);
+        void sauvegarderHorsLigne('profil', data);
+      } catch {
+        const donneesCache = await lireHorsLigne<ProfileData>('profil');
+        if (cancelled) return;
+        if (donneesCache) {
+          appliquer(donneesCache);
+          setHorsLigne(true);
+        }
+        setLoading(false);
       }
-      const body: unknown = await res.json().catch(() => null);
-      if (!cancelled && res.ok) {
-        const data = body as ProfileData;
-        setProfile(data);
-        setModesPreferes(data.profilMobilite?.modesPreferes ?? []);
-        setBesoinsAccessibilite(
-          data.profilMobilite?.besoinsAccessibilite ?? false,
-        );
-      }
-      if (!cancelled) setLoading(false);
     }
 
     void load();
@@ -116,6 +134,11 @@ export function ProfilForm() {
 
   return (
     <div className="auth-form">
+      {horsLigne && (
+        <p className="form-banner info" role="status">
+          Mode hors-ligne — dernières données connues.
+        </p>
+      )}
       <div className="profile-head">
         <span className="avatar" aria-hidden="true">
           {profile.email.charAt(0).toUpperCase()}

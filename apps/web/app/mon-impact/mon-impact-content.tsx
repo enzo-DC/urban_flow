@@ -7,6 +7,7 @@ import type {
 } from '@urbanflow/shared';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { lireHorsLigne, sauvegarderHorsLigne } from '../_lib/offline-store';
 import { NotificationsPush } from './notifications-push';
 
 function formatDate(iso: string): string {
@@ -33,35 +34,57 @@ export function MonImpactContent() {
   );
   const [loading, setLoading] = useState(true);
   const [erreur, setErreur] = useState(false);
+  const [horsLigne, setHorsLigne] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
-      const [resImpact, resGamification] = await Promise.all([
-        fetch('/api/impact'),
-        fetch('/api/gamification'),
+    async function chargerDepuisLeCache() {
+      const [impactCache, gamificationCache] = await Promise.all([
+        lireHorsLigne<ImpactCarbone>('impact'),
+        lireHorsLigne<GamificationResume>('gamification'),
       ]);
-
-      if (resImpact.status === 401 || resGamification.status === 401) {
-        router.push('/connexion');
-        return;
+      if (cancelled) return;
+      if (impactCache && gamificationCache) {
+        setImpact(impactCache);
+        setGamification(gamificationCache);
+        setHorsLigne(true);
+      } else {
+        setErreur(true);
       }
-      if (!resImpact.ok || !resGamification.ok) {
-        if (!cancelled) {
-          setErreur(true);
-          setLoading(false);
+      setLoading(false);
+    }
+
+    async function load() {
+      try {
+        const [resImpact, resGamification] = await Promise.all([
+          fetch('/api/impact'),
+          fetch('/api/gamification'),
+        ]);
+
+        if (resImpact.status === 401 || resGamification.status === 401) {
+          router.push('/connexion');
+          return;
         }
-        return;
-      }
+        if (!resImpact.ok || !resGamification.ok) {
+          throw new Error('reponse API non ok');
+        }
 
-      const impactBody = (await resImpact.json()) as ImpactCarbone;
-      const gamificationBody =
-        (await resGamification.json()) as GamificationResume;
-      if (!cancelled) {
+        const impactBody = (await resImpact.json()) as ImpactCarbone;
+        const gamificationBody =
+          (await resGamification.json()) as GamificationResume;
+        if (cancelled) return;
         setImpact(impactBody);
         setGamification(gamificationBody);
+        setHorsLigne(false);
         setLoading(false);
+        void sauvegarderHorsLigne('impact', impactBody);
+        void sauvegarderHorsLigne('gamification', gamificationBody);
+      } catch {
+        // Reseau indisponible (ou reponse invalide) : on retombe sur la
+        // derniere version connue en IndexedDB plutot que de rester
+        // bloque sur "Chargement…".
+        if (!cancelled) await chargerDepuisLeCache();
       }
     }
 
@@ -94,6 +117,11 @@ export function MonImpactContent() {
 
   return (
     <div className="auth-form">
+      {horsLigne && (
+        <p className="form-banner info" role="status">
+          Mode hors-ligne — dernières données connues.
+        </p>
+      )}
       <div className="impact-hero">
         <span className="valeur">{impact.kmVoitureEvites.toFixed(1)} km</span>
         <span className="label">de trajet en voiture évités</span>
