@@ -168,7 +168,12 @@ export function CartePlanificateur({
     <div
       ref={conteneurRef}
       className="map-shell"
-      role="img"
+      // role="img" serait incorrect : MapLibre injecte des controles
+      // focusables (zoom, boussole) dans ce conteneur, or un role "img" ne
+      // doit jamais avoir de descendant focusable (viole nested-interactive,
+      // trouve via axe-core). "region" reste un landmark valide pour un
+      // widget interactif.
+      role="region"
       aria-label="Carte de l'itineraire selectionne"
     />
   );

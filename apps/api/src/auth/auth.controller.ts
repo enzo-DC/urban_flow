@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { minutes, Throttle } from '@nestjs/throttler';
 import type { CookieOptions, Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -22,6 +23,9 @@ export class AuthController {
     private readonly config: ConfigService,
   ) {}
 
+  // Endpoint sensible (force brute sur les identifiants) : limite resserree
+  // par rapport au defaut global de l'app (60/min, voir app.module.ts).
+  @Throttle({ default: { limit: 5, ttl: minutes(1) } })
   @Post('register')
   async register(
     @Body() dto: RegisterDto,
@@ -32,6 +36,7 @@ export class AuthController {
     return { accessToken: tokens.accessToken };
   }
 
+  @Throttle({ default: { limit: 5, ttl: minutes(1) } })
   @Post('login')
   @HttpCode(200)
   async login(
