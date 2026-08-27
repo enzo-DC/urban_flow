@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { minutes, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -19,6 +20,9 @@ import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
+    // Premier import (recommandation @sentry/nestjs) — no-op tant que
+    // SENTRY_DSN n'est pas defini (voir instrument.ts).
+    SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       // .env (local, host="localhost") passe avant ../../.env (racine, host="db" pour Docker) :
@@ -42,6 +46,12 @@ import { UsersModule } from './users/users.module';
     PushModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Doit etre enregistre avant tout autre filtre d'exception (aucun autre
+    // ici) pour capturer les erreurs non gerees vers Sentry.
+    { provide: APP_FILTER, useClass: SentryGlobalFilter },
+  ],
 })
 export class AppModule {}

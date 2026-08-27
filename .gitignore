@@ -34,3 +34,6 @@ infra/otp/graph.obj
 coverage/
 playwright-report/
 test-results/
+
+# Sauvegardes DB locales (infra/scripts/backup-db.sh) — jamais versionnees.
+/backups/

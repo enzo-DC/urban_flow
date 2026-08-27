@@ -1,3 +1,6 @@
+// Doit s'importer avant tout le reste pour instrumenter correctement le
+// reste de l'application (voir README @sentry/nestjs).
+import './instrument';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';

@@ -1,0 +1,5 @@
+# Ces scripts s'executent sur le VPS (Linux) — une fin de ligne CRLF
+# (frequente sur checkout Windows selon core.autocrlf) les rendrait
+# inexecutables (`bad interpreter`). Force LF quelle que soit la config
+# git locale du contributeur.
+*.sh text eol=lf

@@ -10,6 +10,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.71.0",
     "@serwist/turbopack": "^9.5.12",
     "@urbanflow/shared": "workspace:*",
     "esbuild": "^0.28.2",
