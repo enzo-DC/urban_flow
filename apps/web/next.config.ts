@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import { withSerwist } from '@serwist/turbopack';
+import { withSentryConfig } from '@sentry/nextjs';
 
 // Sans nonce (voir https://nextjs.org/docs/app/guides/content-security-policy
 // "Without Nonces") : un CSP a base de nonce exige que TOUTES les pages
@@ -45,4 +46,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSerwist(nextConfig);
+export default withSentryConfig(withSerwist(nextConfig), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Absent tant qu'aucun projet Sentry reel n'existe (voir Phase 12,
+  // docs/avancement.md) : l'upload des source maps est alors simplement
+  // desactive, sans faire echouer le build.
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+});
