@@ -430,3 +430,62 @@ branche de la Phase 9).
 - Comme aux phases précédentes, chaque branche validée par un test réel contre la vraie stack
   (instance OTP réelle interrogée en introspection GraphQL, conteneur Docker reconstruit, vraie
   base Postgres) avant merge `--no-ff`.
+
+## Phase 12 — Déploiement OVHcloud
+
+Phase 11 (Tests & CI) volontairement sautée pour l'instant, à la demande explicite : la Phase 12
+a été avancée pour préparer la publication. Case non cochée ci-dessus en toute honnêteté : la DoD
+du dossier (« l'app est en ligne en HTTPS sur ton domaine ») suppose un VPS réel, un nom de
+domaine et des secrets GitHub configurés — rien de tout cela n'existe encore au moment d'écrire
+ces lignes (aucun VPS provisionné). Tout ce qui pouvait être préparé et vérifié *sans* cette
+infrastructure l'a été ; le déploiement réel reste une étape manuelle restant à faire.
+
+Découpée en 4 branches (`chore/prod-compose-caddy`, `chore/prod-secrets`, `ci/deploy-pipeline`,
+`chore/backup-observability`).
+
+- **`docker-compose.prod.yml` + Caddy** : mêmes 5 services que le compose de dev, mais deux
+  différences délibérées. D'abord, `api`/`web` utilisent des images `ghcr.io` (construites et
+  publiées par le pipeline CI, jamais buildées sur le VPS) au lieu de `build:`. Ensuite, aucun
+  port n'est publié sur `db`/`cache`/`otp`/`api`/`web` — seul Caddy (80/443) est exposé à
+  Internet, l'API n'étant jamais appelée directement par le navigateur (rôle BFF de `web`). TLS
+  Let's Encrypt automatique, zéro configuration au-delà du nom de domaine (`{$DOMAIN}` dans le
+  Caddyfile). Vérifié avec les vrais outils : `docker compose config` (structure/interpolation)
+  et `caddy validate` avec la vraie image Caddy — configuration valide, redirection HTTP→HTTPS
+  bien détectée automatiquement.
+- **Secrets externalisés** : `.env.prod.example`, modèle complet séparé du `.env.example` de dev
+  (domaine en `https://`, `NODE_ENV=production`, nouvelles variables `DOMAIN`/`ACME_EMAIL`,
+  rappel de générer des secrets JWT distincts de ceux du dev). Recherche dédiée confirmant
+  qu'aucun secret réel ne s'est glissé dans les fichiers infra de cette phase.
+- **Pipeline GitHub Actions** (`.github/workflows/deploy.yml`), déclenché sur push vers `main` :
+  `test` (lint + jest, garde-fou minimal avant tout déploiement — la CI complète reste le sujet de
+  la Phase 11) → `build-and-push` (images GHCR, tags `latest` + sha du commit) → `deploy` (ssh vers
+  le VPS, `git pull` pour garder `docker-compose.prod.yml`/Caddyfile synchronisés avec le dépôt,
+  `docker compose pull && up -d`). Secrets GitHub à configurer avant le premier run (`VPS_HOST`,
+  `VPS_USER`, `VPS_SSH_KEY`) — aucun ne peut être créé depuis cette session, le VPS n'existant pas
+  encore. Vérifié avec `actionlint` (l'outil de référence pour les workflows GitHub Actions), pas
+  seulement relu : 0 erreur.
+- **Sauvegarde/restauration** (`infra/scripts/backup-db.sh`/`restore-db.sh`, `pg_dump` planifiable
+  via cron). **Vrai bug trouvé en testant la restauration pour de vrai** (règle du dossier —
+  « teste une restauration au moins une fois »), pas seulement en relisant le script : sans
+  `--clean --if-exists`, `pg_dump` produit un dump qui échoue en cascade
+  (« already exists »/« duplicate key ») dès qu'on restaure sur une base qui a déjà son schéma —
+  le cas normal en reprise après incident, pas une base vierge de test. Reproduit avec une ligne
+  marqueur insérée puis supprimée : la restauration ne la faisait pas revenir avant correction,
+  la fait revenir après. `.gitattributes` ajouté (`*.sh` forcé en LF) et bit exécutable forcé via
+  `git update-index --chmod=+x` : ces scripts tournent sur le VPS (Linux), un checkout Windows en
+  CRLF les aurait rendus inexécutables sans que rien ne le signale avant le premier vrai run.
+- **Sentry** (`@sentry/nestjs` et `@sentry/nextjs`) — `Sentry.init()` conditionné à la présence du
+  DSN des deux côtés, aucune tentative de connexion en dev/test. Vérifié par un vrai build de
+  production et un démarrage réel du serveur, pas seulement la compilation : aucune régression,
+  l'upload des source maps se désactive proprement sans `SENTRY_AUTH_TOKEN` plutôt que d'échouer.
+- **Incident hors-code, une 3ᵉ fois cette semaine** : le disque C: est retombé à quasiment 0 octet
+  libre en cours de phase (même cause que la Phase 10 — le disque virtuel Docker WSL2 regonfle à
+  chaque rebuild d'image, la compaction n'est pas permanente). Même remède (purge Docker complète
+  + `diskpart compact vdisk`, ~21 Go récupérés) ; Docker Desktop a aussi replanté deux fois en
+  cours de route et redémarré proprement à chaque fois. Prendrait sens de creuser une solution
+  durable (VHD en mode sparse, ou compaction régulière planifiée) plutôt que de refaire ce
+  contournement à chaque grosse phase.
+- Comme aux phases précédentes, chaque branche fonctionnelle validée par un test réel avant merge
+  `--no-ff` — cette fois contre des outils dédiés (`docker compose config`, `caddy validate`,
+  `actionlint`, `shellcheck`) et une vraie base Postgres pour le cycle sauvegarde/restauration,
+  faute de VPS réel disponible pour aller plus loin.
