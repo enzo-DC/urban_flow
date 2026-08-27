@@ -141,6 +141,11 @@ model AbonnementPush {
   clePublique   String
   cleAuth       String
   createdAt     DateTime @default(now())
+  /// Dernier envoi reussi vers cet abonnement — null tant qu'aucune notification
+  /// n'a encore ete envoyee. Sert a purger les abonnements devenus obsoletes
+  /// sans jamais avoir declenche d'erreur 404/410 (ex. navigateur/donnees
+  /// effacees sans desinscription explicite), voir push.purge.service.ts.
+  derniereUtilisationLe DateTime?
 
   utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
 
