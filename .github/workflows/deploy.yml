@@ -23,6 +23,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Sans ca, PrismaClient reste non type (any/error) pour ESLint sur un
+      # runner neuf : le postinstall de Prisma est bloque par defaut par
+      # pnpm (meme comportement observe en local, cf. docs/avancement.md).
+      - run: pnpm --filter api exec prisma generate
       - run: pnpm --filter @urbanflow/shared build
       - run: pnpm --filter api lint
       - run: pnpm --filter web lint
