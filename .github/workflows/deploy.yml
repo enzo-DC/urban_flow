@@ -6,8 +6,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_API: ghcr.io/${{ github.repository_owner }}/urban_flow-api
-  IMAGE_WEB: ghcr.io/${{ github.repository_owner }}/urban_flow-web
 
 jobs:
   # Garde-fou minimal avant de deployer — la CI complete (e2e, axe-core en
@@ -44,6 +42,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # GHCR exige un nom de depot entierement en minuscules — le proprietaire
+      # GitHub (github.repository_owner) peut contenir des majuscules
+      # (ex. enzo-DC), ce que les expressions GitHub Actions ne savent pas
+      # convertir nativement. Trouve en conditions reelles : "repository name
+      # must be lowercase" au premier essai avec ${{ github.repository_owner }}
+      # utilise tel quel dans le tag.
+      - name: Calculer le nom de depot GHCR en minuscules
+        run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -59,8 +66,8 @@ jobs:
           file: apps/api/Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_API }}:latest
-            ${{ env.IMAGE_API }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/urban_flow-api:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/urban_flow-api:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -71,8 +78,8 @@ jobs:
           file: apps/web/Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_WEB }}:latest
-            ${{ env.IMAGE_WEB }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/urban_flow-web:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/urban_flow-web:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
