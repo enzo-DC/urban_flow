@@ -13,6 +13,50 @@ jobs:
   # pousse jamais en prod sans au moins lint + tests unitaires au vert.
   test:
     runs-on: ubuntu-latest
+    # Memes images que infra/docker-compose.yml (postgis/postgis, valkey) —
+    # un conteneur de service ephemere par job, jamais la vraie base prod.
+    services:
+      postgres:
+        image: postgis/postgis:18-3.6
+        env:
+          POSTGRES_USER: urbanflow
+          POSTGRES_PASSWORD: urbanflow_ci
+          POSTGRES_DB: urbanflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U urbanflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      valkey:
+        image: valkey/valkey:9
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://urbanflow:urbanflow_ci@localhost:5432/urbanflow
+      CACHE_URL: redis://localhost:6379
+      JWT_SECRET: ci-jwt-secret-jamais-utilise-en-prod
+      JWT_REFRESH_SECRET: ci-refresh-secret-jamais-utilise-en-prod
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 7d
+      WEB_ORIGIN: http://localhost:3000
+      TISSEO_API_KEY: ci-dummy-key
+      TISSEO_GTFS_RT_URL: https://ci.invalid/gtfs-rt
+      GBFS_VELOTOULOUSE_URL: https://ci.invalid/gbfs
+      GBFS_YEGO_URL: https://ci.invalid/gbfs
+      OTP_URL: https://ci.invalid/otp
+      # Paire jetable generee pour la CI uniquement (web-push valide le format
+      # a l'instanciation de PushService) — sans rapport avec les vraies cles
+      # VAPID de production.
+      VAPID_SUBJECT: mailto:ci@urbanflow.test
+      VAPID_PUBLIC_KEY: BHHV9Xr1wyfnwZsWMF0VbnuY67dFbJMbPDHG3Are0AzHSppVt1TZHnykNvYcpj1i2k7CeAIdF1H4FAfK-6wPD5g
+      VAPID_PRIVATE_KEY: Dg1jTh0kDiSoadA9Bd74nxSUbPbN01DjktC8Kqfzh60
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -28,10 +72,14 @@ jobs:
       - run: pnpm --filter @urbanflow/shared build
       - run: pnpm --filter api lint
       - run: pnpm --filter web lint
-      # Exclut le test d'integration (necessite une vraie base Postgres,
-      # absente de ce job minimal — la CI complete avec conteneur PG reste
-      # le sujet de la Phase 11).
-      - run: pnpm --filter api exec jest --testPathIgnorePatterns='\.integration\.spec\.ts$'
+      - run: pnpm --filter api exec prisma migrate deploy
+      - run: pnpm --filter api db:seed
+      # Plus d'exclusion : le conteneur postgis ci-dessus fournit une vraie
+      # base pour le test d'integration ST_DWithin (Phase 3/11).
+      - run: pnpm --filter api exec jest
+      # Tests e2e Nest (RGPD export/suppression, profil) — AppModule complet,
+      # meme base et Valkey que ci-dessus.
+      - run: pnpm --filter api test:e2e
 
   build-and-push:
     needs: test
