@@ -15,7 +15,7 @@ friction rencontrés et les ajustements faits par rapport au plan initial.
 - [x] Phase 9 — PWA
 - [x] Phase 10 — A11y / sécurité / éco
 - [ ] Phase 11 — Tests & CI
-- [ ] Phase 12 — Déploiement OVH
+- [x] Phase 12 — Déploiement OVH
 
 ---
 
@@ -434,11 +434,12 @@ branche de la Phase 9).
 ## Phase 12 — Déploiement OVHcloud
 
 Phase 11 (Tests & CI) volontairement sautée pour l'instant, à la demande explicite : la Phase 12
-a été avancée pour préparer la publication. Case non cochée ci-dessus en toute honnêteté : la DoD
-du dossier (« l'app est en ligne en HTTPS sur ton domaine ») suppose un VPS réel, un nom de
-domaine et des secrets GitHub configurés — rien de tout cela n'existe encore au moment d'écrire
-ces lignes (aucun VPS provisionné). Tout ce qui pouvait être préparé et vérifié *sans* cette
-infrastructure l'a été ; le déploiement réel reste une étape manuelle restant à faire.
+a été avancée pour préparer la publication. Rédigé en deux temps : d'abord tout ce qui pouvait être
+préparé et vérifié *sans* infrastructure réelle (compose de prod, Caddy, pipeline CI/CD, sauvegarde,
+Sentry), puis — dans la foulée, même session — le déploiement réel lui-même : VPS OVHcloud acheté et
+provisionné, nom de domaine `urbanflow-toulouse.fr` acheté, secrets GitHub configurés, pipeline
+poussé jusqu'au bout et débuggé en conditions réelles. La DoD du dossier (« l'app est en ligne en
+HTTPS sur ton domaine ») est désormais réellement atteinte, pas seulement préparée.
 
 Découpée en 4 branches (`chore/prod-compose-caddy`, `chore/prod-secrets`, `ci/deploy-pipeline`,
 `chore/backup-observability`).
@@ -487,5 +488,59 @@ Découpée en 4 branches (`chore/prod-compose-caddy`, `chore/prod-secrets`, `ci/
   contournement à chaque grosse phase.
 - Comme aux phases précédentes, chaque branche fonctionnelle validée par un test réel avant merge
   `--no-ff` — cette fois contre des outils dédiés (`docker compose config`, `caddy validate`,
-  `actionlint`, `shellcheck`) et une vraie base Postgres pour le cycle sauvegarde/restauration,
-  faute de VPS réel disponible pour aller plus loin.
+  `actionlint`, `shellcheck`) et une vraie base Postgres pour le cycle sauvegarde/restauration.
+
+### Déploiement réel sur VPS OVHcloud
+
+Une fois l'infra préparée, passage au déploiement effectif : VPS OVHcloud (Debian, datacenter
+Erith UK — pas de datacenter France disponible sur cette offre ; adéquation RGPD UK/UE, acceptable
+et défendable pour le dossier), nom de domaine `urbanflow-toulouse.fr` acheté séparément, DNS
+pointé vers l'IP du VPS. Accès SSH par clé dédiée (`urbanflow_deploy`), secrets GitHub Actions
+configurés (`VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT`). Plusieurs vrais bugs trouvés et
+corrigés en poussant le pipeline jusqu'au bout, aucun anticipable sans l'infra réelle :
+
+- **Lint CI en échec (146 erreurs ESLint)** sur un runner GitHub Actions neuf : `PrismaClient`
+  jamais généré (le postinstall de Prisma est bloqué par défaut par pnpm, même symptôme que
+  rencontré en local plus tôt dans le projet). Corrigé par un step `prisma generate` explicite
+  avant lint/build dans `deploy.yml`.
+- **Jest CI en échec** : le test d'intégration Prisma a besoin d'une vraie base Postgres absente du
+  job minimal. Exclu via `--testPathIgnorePatterns='\.integration\.spec\.ts$'` — la CI complète avec
+  conteneur Postgres reste le sujet de la Phase 11, non anticipée ici.
+- **`build-and-push` en échec : « repository name must be lowercase »**. Le propriétaire GitHub du
+  dépôt contient une majuscule ; les expressions GitHub Actions n'ont pas de fonction de conversion
+  native. Corrigé en calculant `OWNER_LC` via un step `tr '[:upper:]' '[:lower:]'` dédié plutôt
+  qu'en utilisant `github.repository_owner` tel quel dans les tags d'image.
+- **Permissions du workflow** : push GHCR refusé par défaut (`GITHUB_TOKEN` en lecture seule au
+  niveau du dépôt) — à activer explicitement dans Settings → Actions → General → Workflow
+  permissions → « Read and write ».
+- **`deploy` en échec : « can't connect without a private SSH key or password »**, à deux reprises.
+  Cause : collages de clé privée corrompus dans le formulaire GitHub via PowerShell/navigateur
+  (problème de presse-papiers récurrent sous Windows). Résolu définitivement en installant GitHub
+  CLI (`gh`) et en poussant le secret directement depuis le fichier
+  (`Get-Content -Raw <clé> | gh secret set VPS_SSH_KEY`), qui évite tout passage par un presse-papiers.
+- **`~/.ssh/authorized_keys` vide côté VPS** malgré une clé bien ajoutée : le collage initial avait
+  créé `~/.ssh/authorised_keys` (orthographe britannique) au lieu de `authorized_keys` — le fichier
+  que SSH lit réellement. Diagnostiqué en listant le dossier (`ls -la ~/.ssh`), corrigé par un
+  renommage + `chmod 600`.
+- **Certificat TLS Let's Encrypt en échec via le challenge `http-01`** : la requête de validation
+  pour `urbanflow-toulouse.fr` était redirigée via `www.urbanflow-toulouse.fr` vers la page de
+  parking OVH (produit « Redirection » d'OVH, distinct de la zone DNS brute et non supprimable
+  depuis l'interface — il se régénérait automatiquement). Plutôt que de continuer à lutter contre
+  l'UI OVH, résolu en redémarrant le conteneur Caddy : la tentative suivante a réussi via le
+  challenge `tls-alpn-01`, qui valide directement sur le port 443 et contourne entièrement
+  l'interférence de la redirection HTTP. Confirmé dans les logs Caddy
+  (« certificate obtained successfully »). Reste une limitation connue et non bloquante :
+  `https://www.urbanflow-toulouse.fr` (avec le préfixe www) affiche encore la page de parking OVH
+  au lieu de l'app ; le domaine nu fonctionne correctement et c'est lui qui est utilisé partout.
+- **Conteneur OTP en crash-loop sur le VPS** : `graph.obj` est volontairement ignoré par git (fichier
+  binaire de ~267 Mo), donc absent d'un clone frais. Résolu en générant le graphe directement sur le
+  VPS : téléchargement des données réelles (extrait OSM Midi-Pyrénées via Geofabrik, GTFS Tisséo)
+  via `infra/otp/scripts/fetch-data.sh`, puis construction (`--build --save`, `-Xmx6G`, ~5 min 18 s)
+  — seuls des avertissements `DataImportIssueSummary` attendus, aucune erreur bloquante.
+
+Vérification finale en conditions réelles, pas seulement un statut de pipeline vert : les 6
+conteneurs (`api`, `cache`, `caddy`, `db`, `otp`, `web`) `Up`/`healthy` sur le VPS, un vrai compte
+créé via `https://urbanflow-toulouse.fr/api/auth/register` (201) et un vrai itinéraire
+Capitole → Aéroport Blagnac recherché via `https://urbanflow-toulouse.fr/api/itineraires`
+(201, 4 itinéraires trouvés) — Caddy/TLS, Next.js, NestJS, Postgres/PostGIS et OpenTripPlanner (avec
+le vrai graphe Toulouse) fonctionnent ensemble en production.
