@@ -3,14 +3,19 @@ name: Déploiement production
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
-  # Garde-fou minimal avant de deployer — la CI complete (e2e, axe-core en
-  # continu) reste le sujet de la Phase 11, pas anticipee ici, mais on ne
-  # pousse jamais en prod sans au moins lint + tests unitaires au vert.
+  # Tourne sur les push vers main ET sur chaque pull request vers main —
+  # c'est ce meme job (lint -> test -> build) que la fusion attend au vert
+  # via la protection de branche (Settings > Branches > main > Require
+  # status checks : "test"). build-and-push/deploy restent reserves au push
+  # sur main (cf. leurs conditions if ci-dessous) : une PR ne publie ni ne
+  # deploie jamais d'image.
   test:
     runs-on: ubuntu-latest
     # Memes images que infra/docker-compose.yml (postgis/postgis, valkey) —
@@ -72,6 +77,8 @@ jobs:
       - run: pnpm --filter @urbanflow/shared build
       - run: pnpm --filter api lint
       - run: pnpm --filter web lint
+      - run: pnpm --filter api build
+      - run: pnpm --filter web build
       - run: pnpm --filter api exec prisma migrate deploy
       - run: pnpm --filter api db:seed
       # Plus d'exclusion : le conteneur postgis ci-dessus fournit une vraie
@@ -83,6 +90,7 @@ jobs:
 
   build-and-push:
     needs: test
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -133,6 +141,7 @@ jobs:
 
   deploy:
     needs: build-and-push
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       # Secrets a configurer cote GitHub (Settings > Secrets and variables >
