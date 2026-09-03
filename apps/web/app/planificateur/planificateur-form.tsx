@@ -248,20 +248,17 @@ export function PlanificateurForm() {
       />
 
       {itineraires.length > 0 && (
-        <div
-          className="trip-results"
-          role="list"
-          aria-label="Itinéraires trouvés"
-        >
+        <ul className="trip-results" aria-label="Itinéraires trouvés">
           {itineraires.map((itineraire) => (
-            <CarteResultat
-              key={itineraire.id}
-              itineraire={itineraire}
-              selectionne={itineraire.id === itineraireSelectionne?.id}
-              onSelect={() => setSelectionId(itineraire.id)}
-            />
+            <li key={itineraire.id}>
+              <CarteResultat
+                itineraire={itineraire}
+                selectionne={itineraire.id === itineraireSelectionne?.id}
+                onSelect={() => setSelectionId(itineraire.id)}
+              />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {itineraireSelectionne && (
