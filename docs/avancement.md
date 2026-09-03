@@ -14,7 +14,7 @@ friction rencontrés et les ajustements faits par rapport au plan initial.
 - [x] Phase 8 — Gamification
 - [x] Phase 9 — PWA
 - [x] Phase 10 — A11y / sécurité / éco
-- [ ] Phase 11 — Tests & CI
+- [x] Phase 11 — Tests & CI
 - [x] Phase 12 — Déploiement OVH
 
 ---
@@ -430,6 +430,57 @@ branche de la Phase 9).
 - Comme aux phases précédentes, chaque branche validée par un test réel contre la vraie stack
   (instance OTP réelle interrogée en introspection GraphQL, conteneur Docker reconstruit, vraie
   base Postgres) avant merge `--no-ff`.
+
+## Phase 11 — Tests et intégration continue
+
+Traitée après la Phase 12 (déploiement avancé plus tôt à la demande explicite) — le pipeline
+`deploy.yml` existait donc déjà et cette phase l'a complété plutôt que créé depuis zéro. Un état des
+lieux réel du code (pas de la doc) a d'abord confirmé ce qui existait : calcul carbone, règles de
+points et tri d'itinéraires déjà couverts par des tests Jest unitaires ; un test d'intégration
+PostGIS et trois suites e2e Nest (RGPD, profil) déjà écrits mais jamais exécutés en CI, faute de
+base Postgres sur le runner ; un test Playwright du planificateur seul (sans auth) et un audit
+axe-core à vide du formulaire, mais aucun scénario bout en bout ni aucun audit d'accessibilité sur
+les résultats de recherche réels. Découpée en 4 branches
+(`test/ci-postgres-integration`, `test/e2e-parcours-complet`, `test/a11y-couverture-complete`,
+`ci/pr-pipeline-gate`).
+
+- **Conteneurs Postgres/Valkey en CI** : le job `test` gagne des `services` GitHub Actions (mêmes
+  images que `infra/docker-compose.yml`) puis migration + seed avant les tests, ce qui a permis de
+  retirer l'exclusion du test d'intégration PostGIS et d'ajouter les trois suites e2e Nest au job.
+  Vérifié en local avant de pousser (mêmes conteneurs, mêmes identifiants qu'en CI) : une vraie race
+  condition rencontrée au tout premier démarrage du conteneur Postgres (le seed a échoué une fois
+  avec `AuthenticationFailed` pendant le redémarrage interne que fait l'image officielle après
+  l'init — connu, non bloquant, `pg_isready` a fini par se stabiliser). Puis confirmé pour de vrai
+  sur le runner GitHub Actions lui-même (pas seulement en local) : 24 suites Jest (114 tests,
+  intégration incluse) et 3 suites e2e Nest (6 tests) au vert.
+- **Scénario Playwright bout en bout** : jusqu'ici, inscription et planification n'étaient jamais
+  testées enchaînées via l'UI — seulement séparément (planificateur sans auth, inscription en
+  appel API brut pour l'a11y). Nouveau test qui inscrit un compte via le vrai formulaire, planifie
+  Capitole → Blagnac, enregistre le trajet et vérifie l'impact carbone affiché sur `/mon-impact`.
+  Vérifié contre la stack complète réellement démarrée (db/cache/otp/api Docker + vrai graphe OTP
+  Toulouse), pas des mocks.
+- **Couverture axe-core étendue** : le planificateur n'avait jusqu'ici été audité qu'à vide
+  (formulaire seul, sans résultats). **Vrai bug critique trouvé** en auditant l'état après une
+  recherche réelle : `aria-required-children` sur `.trip-results` (`role="list"` appliqué à un
+  `<div>` contenant directement des `<button class="trip-card">`, sans enfants `role="listitem"` —
+  viole WCAG 1.3.1 / RGAA 9.3.1). Corrigé en remplaçant le rôle ARIA explicite par un `<ul>`/`<li>`
+  sémantique natif, plus robuste qu'un rôle à resynchroniser manuellement avec le DOM.
+- **CI sur les pull requests + statut requis** : ajout du déclencheur `pull_request` et de deux
+  étapes de build (api + web, pas seulement le package `shared`) au job `test` ;
+  `build-and-push`/`deploy` restent conditionnés à `github.event_name == 'push'`, jamais déclenchés
+  sur une PR. Décision explicite avec l'utilisateur sur la portée de la protection de branche
+  GitHub, ce projet ayant toujours fonctionné en push direct sur `main` (jamais de PR) : statut
+  requis (`required_status_checks`, contexte `test`) sans `enforce_admins`, plutôt qu'une PR
+  obligatoire qui aurait cassé ce flux. **Vérifié pour de vrai, pas supposé** : un push direct sur
+  `main` après activation de la protection est bien passé (« Bypassed rule violations », bypass
+  admin normal) ; puis une PR jetable avec un import volontairement inutilisé (lint cassé exprès) a
+  confirmé `mergeStateStatus: "BLOCKED"` tant que le job `test` échoue, et que `build-and-push`/
+  `deploy` restent bien à `SKIPPED` sur une PR même quand `test` tourne. PR et branche jetables
+  supprimées immédiatement après vérification.
+- Comme aux phases précédentes, chaque branche validée par un test réel avant merge `--no-ff` —
+  cette fois avec un niveau de rigueur supplémentaire rendu possible par la Phase 12 : le vrai
+  runner GitHub Actions et le vrai site en production (`https://urbanflow-toulouse.fr`, toujours en
+  200 après chaque redéploiement déclenché par ces merges), pas seulement des outils locaux.
 
 ## Phase 12 — Déploiement OVHcloud
 
