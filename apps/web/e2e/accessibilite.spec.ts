@@ -46,4 +46,43 @@ test.describe('Accessibilite (axe-core) — pages principales', () => {
     await verifierPage(page, '/mon-impact');
     await verifierPage(page, '/profil');
   });
+
+  // Le planificateur a jusqu'ici toujours ete audite a vide (formulaire
+  // seul) : les cartes de resultat, le groupe de tri et le bouton "j'ai
+  // fait ce trajet", qui n'apparaissent qu'apres une recherche reelle,
+  // n'avaient jamais ete passes a axe-core.
+  test('planificateur avec des resultats de recherche affiches', async ({
+    page,
+  }) => {
+    await page.goto('/planificateur');
+
+    await page.getByLabel('Départ').fill('Place du Capitole, Toulouse');
+    await page
+      .locator('.search-results li button')
+      .first()
+      .waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('.search-results li button').first().click();
+
+    await page.getByLabel('Destination').fill('Aéroport Toulouse-Blagnac');
+    await page
+      .locator('.search-results li button')
+      .first()
+      .waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('.search-results li button').first().click();
+
+    await page
+      .getByRole('button', { name: 'Rechercher un itinéraire' })
+      .click();
+    await page.locator('.trip-card').first().waitFor({ state: 'visible' });
+    await page.locator('.trip-card').first().click();
+
+    const resultats = await new AxeBuilder({ page }).analyze();
+    const critiques = resultats.violations.filter(
+      (v) => v.impact === 'critical',
+    );
+    expect(
+      critiques,
+      critiques.map((v) => `${v.id}: ${v.description}`).join('\n'),
+    ).toHaveLength(0);
+  });
 });
