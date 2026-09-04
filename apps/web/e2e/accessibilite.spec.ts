@@ -32,6 +32,10 @@ test.describe('Accessibilite (axe-core) — pages principales', () => {
     await verifierPage(page, '/inscription');
   });
 
+  test('mentions légales', async ({ page }) => {
+    await verifierPage(page, '/mentions-legales');
+  });
+
   test('planificateur', async ({ page }) => {
     await verifierPage(page, '/planificateur');
   });

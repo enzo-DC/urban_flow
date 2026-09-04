@@ -198,6 +198,9 @@ export function ProfilForm() {
       <a href="/profil/confidentialite" className="auth-footer">
         Confidentialité et mes données →
       </a>
+      <a href="/mentions-legales" className="auth-footer">
+        Mentions légales →
+      </a>
     </div>
   );
 }
