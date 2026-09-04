@@ -1,6 +1,7 @@
 import { SerwistProvider } from '@serwist/turbopack/react';
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
+import { NavBar } from './components/nav-bar';
 import './globals.css';
 
 // Inter, auto-hébergée (jamais via un CDN tiers — performance et RGPD).
@@ -35,7 +36,10 @@ export default function RootLayout({
   return (
     <html lang="fr" className={inter.variable}>
       <body>
-        <SerwistProvider swUrl="/serwist/sw.js">{children}</SerwistProvider>
+        <SerwistProvider swUrl="/serwist/sw.js">
+          <NavBar />
+          {children}
+        </SerwistProvider>
       </body>
     </html>
   );
