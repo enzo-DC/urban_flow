@@ -4,6 +4,7 @@ import type {
   ArretTransport,
   Itineraire,
   LieuGeocode,
+  ProchainPassage,
   VehiculeDisponible,
 } from '@urbanflow/shared';
 import {
@@ -12,6 +13,7 @@ import {
   Map as MapLibreMap,
   Marker,
   NavigationControl,
+  Popup,
   type StyleSpecification,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -84,6 +86,9 @@ export function CartePlanificateur({
   const marqueursRef = useRef<Marker[]>([]);
   const arretsMarqueursRef = useRef<Marker[]>([]);
   const stationsMarqueursRef = useRef<Marker[]>([]);
+  // Un seul popup ouvert a la fois (arret ou station) : le clic suivant
+  // ferme le precedent plutot que de les empiler.
+  const popupOuvertRef = useRef<Popup | null>(null);
   const disponibilitesRef = useRef<VehiculeDisponible[]>(disponibilites);
   useEffect(() => {
     disponibilitesRef.current = disponibilites;
@@ -128,6 +133,9 @@ export function CartePlanificateur({
 
     function dessiner() {
       if (!carte) return;
+
+      popupOuvertRef.current?.remove();
+      popupOuvertRef.current = null;
 
       for (const marqueur of marqueursRef.current) marqueur.remove();
       marqueursRef.current = [];
@@ -272,9 +280,22 @@ export function CartePlanificateur({
 
         for (const marqueur of arretsMarqueursRef.current) marqueur.remove();
         arretsMarqueursRef.current = arrets.map((arret) => {
-          const point = document.createElement('div');
+          // Bouton, pas juste un div : reste operable au clavier (Tab +
+          // Entree) meme si sa taille visuelle reste sous 48px — a cette
+          // densite (jusqu'a 200 arrets), des cibles tactiles pleine taille
+          // se chevaucheraient et rendraient la carte inutilisable. La liste
+          // textuelle des itineraires reste par ailleurs l'acces complet et
+          // sans souris a l'information de trajet (regle du dossier).
+          const point = document.createElement('button');
+          point.type = 'button';
           point.className = 'arret-point';
-          point.title = arret.nom;
+          point.setAttribute(
+            'aria-label',
+            `${arret.nom} — voir les prochains passages`,
+          );
+          point.addEventListener('click', () => {
+            ouvrirPopupArret(carte, arret);
+          });
           return new Marker({ element: point })
             .setLngLat([arret.position.longitude, arret.position.latitude])
             .addTo(carte);
@@ -283,6 +304,92 @@ export function CartePlanificateur({
         // Degradation silencieuse : les arrets sont un complement visuel,
         // jamais un blocage de la planification d'itineraire elle-meme.
       }
+    }
+
+    function ouvrirPopupArret(carte: MapLibreMap, arret: ArretTransport) {
+      popupOuvertRef.current?.remove();
+
+      const contenu = document.createElement('div');
+      contenu.className = 'popup-arret';
+      const titre = document.createElement('p');
+      titre.className = 'popup-arret-titre';
+      titre.textContent = arret.nom;
+      const corps = document.createElement('div');
+      corps.className = 'popup-arret-corps';
+      corps.textContent = 'Chargement…';
+      contenu.append(titre, corps);
+
+      // closeOnClick vaut true par defaut chez MapLibre : sans le
+      // desactiver, le popup se refermait tout seul immediatement, le clic
+      // qui vient de l'ouvrir (sur le marqueur, au-dessus du canvas de la
+      // carte) etant lui-meme interprete comme « un clic ailleurs sur la
+      // carte » — trouve en instrumentant le popup en conditions reelles
+      // (Playwright), pas suppose : popup.isOpen() valait bien true juste
+      // apres addTo(), puis false une seconde plus tard sans qu'aucun code
+      // du composant n'ait appele .remove().
+      const popup = new Popup({
+        closeButton: true,
+        closeOnClick: false,
+        maxWidth: '260px',
+      })
+        .setLngLat([arret.position.longitude, arret.position.latitude])
+        .setDOMContent(contenu)
+        .addTo(carte);
+      popupOuvertRef.current = popup;
+
+      void fetch(
+        `/api/arrets/prochains-passages?id=${encodeURIComponent(arret.id)}`,
+      )
+        .then((res) =>
+          res.ok ? (res.json() as Promise<ProchainPassage[]>) : [],
+        )
+        .then((passages) => {
+          // Le popup a ete ferme (autre clic, croix) entre-temps.
+          if (popupOuvertRef.current !== popup) return;
+          corps.replaceChildren();
+          if (passages.length === 0) {
+            corps.textContent = 'Aucun prochain passage connu.';
+            return;
+          }
+          for (const passage of passages) {
+            corps.appendChild(construireLignePassage(passage));
+          }
+        })
+        .catch(() => {
+          if (popupOuvertRef.current !== popup) return;
+          corps.textContent =
+            'Prochains passages indisponibles pour le moment.';
+        });
+    }
+
+    function construireLignePassage(passage: ProchainPassage): HTMLElement {
+      const ligne = document.createElement('div');
+      ligne.className = 'popup-passage';
+
+      const badge = document.createElement('span');
+      badge.className = 'popup-passage-ligne';
+      badge.textContent = passage.ligne;
+
+      const destination = document.createElement('span');
+      destination.className = 'popup-passage-destination';
+      destination.textContent = `→ ${passage.destination}`;
+
+      const minutes = document.createElement('span');
+      minutes.className = 'popup-passage-minutes';
+      if (passage.perturbation === 'ANNULE') {
+        minutes.textContent = 'Annulé';
+        minutes.classList.add('popup-passage-alerte');
+      } else {
+        minutes.textContent =
+          passage.dansMinutes <= 0 ? 'Imminent' : `${passage.dansMinutes} min`;
+        if (passage.perturbation === 'RETARDE' && passage.retardMinutes) {
+          minutes.textContent += ` (+${passage.retardMinutes})`;
+          minutes.classList.add('popup-passage-alerte');
+        }
+      }
+
+      ligne.append(badge, destination, minutes);
+      return ligne;
     }
 
     if (carte.isStyleLoaded()) {

@@ -276,7 +276,7 @@ describe('OtpClientService', () => {
   });
 
   describe('arretsDansZone', () => {
-    it('convertit les arrets OTP, retire le prefixe de feed et traduit le mode', async () => {
+    it('convertit les arrets OTP (gtfsId complet, mode traduit)', async () => {
       global.fetch = jest.fn((url: string) => {
         expect(url).toBe(GRAPHQL_URL);
         return Promise.resolve(
@@ -308,13 +308,13 @@ describe('OtpClientService', () => {
 
       expect(result).toEqual([
         {
-          id: 'stop_point:SP_1595',
+          id: '1:stop_point:SP_1595',
           nom: 'Concorde',
           position: { latitude: 43.6103122, longitude: 1.4436469 },
           mode: 'bus',
         },
         {
-          id: 'stop_point:SP_2676',
+          id: '1:stop_point:SP_2676',
           nom: "Jeanne d'Arc",
           position: { latitude: 43.6091267, longitude: 1.4457313 },
           mode: 'metro',
@@ -345,6 +345,97 @@ describe('OtpClientService', () => {
 
       const client = new OtpClientService(buildConfig());
       const result = await client.arretsDansZone(0, 0, 0, 0);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('prochainsPassages', () => {
+    const maintenant = 1_788_537_709; // epoch seconde fixe pour un calcul de dansMinutes deterministe.
+
+    beforeEach(() => {
+      jest.spyOn(Date, 'now').mockReturnValue(maintenant * 1000);
+    });
+
+    it('convertit les horaires theoriques OTP (ligne, destination, minutes, mode, voyageId)', async () => {
+      global.fetch = jest.fn((url: string) => {
+        expect(url).toBe(GRAPHQL_URL);
+        return Promise.resolve(
+          jsonResponse({
+            data: {
+              stop: {
+                stoptimesWithoutPatterns: [
+                  {
+                    // Dans 4 min (240s) par rapport a `maintenant`.
+                    serviceDay: maintenant - 100,
+                    realtimeDeparture: 340,
+                    headsign: 'Basso Cambo',
+                    trip: {
+                      gtfsId: '1:2349722',
+                      route: { shortName: 'A', mode: 'SUBWAY' },
+                    },
+                  },
+                ],
+              },
+            },
+          }),
+        );
+      });
+
+      const client = new OtpClientService(buildConfig());
+      const result = await client.prochainsPassages('1:stop_point:SP_1912');
+
+      expect(result).toEqual([
+        {
+          ligne: 'A',
+          destination: 'Basso Cambo',
+          mode: 'metro',
+          dansMinutes: 4,
+          voyageId: '2349722',
+        },
+      ]);
+    });
+
+    it('ignore les horaires sans route associee', async () => {
+      global.fetch = jest.fn().mockResolvedValue(
+        jsonResponse({
+          data: {
+            stop: {
+              stoptimesWithoutPatterns: [
+                {
+                  serviceDay: maintenant,
+                  realtimeDeparture: 0,
+                  headsign: null,
+                  trip: { gtfsId: '1:x', route: null },
+                },
+              ],
+            },
+          },
+        }),
+      );
+
+      const client = new OtpClientService(buildConfig());
+      const result = await client.prochainsPassages('1:stop_point:SP_1912');
+
+      expect(result).toEqual([]);
+    });
+
+    it('renvoie un tableau vide sans exception si l’arret est introuvable', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(jsonResponse({ data: { stop: null } }));
+
+      const client = new OtpClientService(buildConfig());
+      const result = await client.prochainsPassages('id-inconnu');
+
+      expect(result).toEqual([]);
+    });
+
+    it('renvoie un tableau vide sans exception si OTP est indisponible', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+
+      const client = new OtpClientService(buildConfig());
+      const result = await client.prochainsPassages('1:stop_point:SP_1912');
 
       expect(result).toEqual([]);
     });

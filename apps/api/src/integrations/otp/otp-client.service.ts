@@ -5,9 +5,11 @@ import { fetchWithTimeout } from '../http-client.util';
 import { versModeTransport } from './otp-mode.mapper';
 import type {
   OtpGraphQlResponse,
+  OtpGraphQlStopResponse,
   OtpGraphQlStopsResponse,
   OtpItineraire,
   OtpGraphQlPlanNode,
+  OtpProchainPassage,
 } from './otp.types';
 
 const TIMEOUT_MS = 4000;
@@ -27,6 +29,24 @@ const STOPS_QUERY = `
 // Au-dela, la liste devient illisible sur la carte (zoom large) — mieux vaut
 // ne rien afficher que noyer les marqueurs de depart/arrivee/itineraire.
 const MAX_ARRETS = 200;
+
+const PROCHAINS_PASSAGES_QUERY = `
+  query ProchainsPassages($id: String!, $n: Int!) {
+    stop(id: $id) {
+      stoptimesWithoutPatterns(numberOfDepartures: $n) {
+        realtimeDeparture
+        serviceDay
+        headsign
+        trip {
+          gtfsId
+          route { shortName mode }
+        }
+      }
+    }
+  }
+`;
+
+const NOMBRE_PASSAGES = 5;
 
 const PLAN_QUERY = `
   query Plan($origine: PlanLabeledLocationInput!, $destination: PlanLabeledLocationInput!, $preferences: PlanPreferencesInput) {
@@ -160,7 +180,12 @@ export class OtpClientService {
       }
       const stops = payload.data?.stopsByBbox ?? [];
       return stops.slice(0, MAX_ARRETS).map((stop) => ({
-        id: retirerPrefixeFeed(stop.gtfsId),
+        // gtfsId complet (avec prefixe de feed), pas retire ici contrairement
+        // aux legs d'itineraire : c'est cet identifiant qu'il faut renvoyer
+        // tel quel a stop(id:) pour recuperer les prochains passages
+        // (prochainsPassages ci-dessous) — un aller-retour verifie en
+        // conditions reelles avant d'ecrire cette fonction.
+        id: stop.gtfsId,
         nom: stop.name,
         position: { latitude: stop.lat, longitude: stop.lon },
         mode: versModeTransport(stop.vehicleMode ?? ''),
@@ -168,6 +193,56 @@ export class OtpClientService {
     } catch (error) {
       this.logger.warn(
         `Recherche d'arrets OTP echouee : ${(error as Error).message}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Prochains passages theoriques a un arret (horaires GTFS statiques — le
+   * graphe OTP n'a pas de flux temps reel branche, voir docs/avancement.md).
+   * Le croisement avec les perturbations GTFS-RT deja recuperees par le
+   * projet se fait en aval, dans ArretsService — cette methode ne renvoie
+   * que les horaires theoriques et le voyageId necessaire a ce croisement.
+   */
+  async prochainsPassages(stopId: string): Promise<OtpProchainPassage[]> {
+    try {
+      const response = await fetchWithTimeout(this.graphqlUrl, {
+        timeoutMs: TIMEOUT_MS,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: PROCHAINS_PASSAGES_QUERY,
+          variables: { id: stopId, n: NOMBRE_PASSAGES },
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`${this.graphqlUrl} a repondu ${response.status}`);
+      }
+      const payload = (await response.json()) as OtpGraphQlStopResponse;
+      if (payload.errors?.length) {
+        throw new Error(payload.errors.map((e) => e.message).join('; '));
+      }
+      const stoptimes = payload.data?.stop?.stoptimesWithoutPatterns ?? [];
+      const maintenant = Math.floor(Date.now() / 1000);
+
+      return stoptimes
+        .filter((st) => st.trip?.route)
+        .map((st) => ({
+          ligne: st.trip!.route!.shortName ?? '?',
+          destination: st.headsign ?? '',
+          mode: versModeTransport(st.trip!.route!.mode),
+          dansMinutes: Math.max(
+            0,
+            Math.round(
+              (st.serviceDay + st.realtimeDeparture - maintenant) / 60,
+            ),
+          ),
+          voyageId: st.trip ? retirerPrefixeFeed(st.trip.gtfsId) : undefined,
+        }));
+    } catch (error) {
+      this.logger.warn(
+        `Recherche des prochains passages OTP echouee : ${(error as Error).message}`,
       );
       return [];
     }

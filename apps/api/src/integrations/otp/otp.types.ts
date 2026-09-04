@@ -56,3 +56,35 @@ export interface OtpGraphQlStopsResponse {
   data?: { stopsByBbox: OtpGraphQlStopNode[] };
   errors?: { message: string }[];
 }
+
+export interface OtpGraphQlStoptimeNode {
+  realtimeDeparture: number;
+  serviceDay: number;
+  headsign: string | null;
+  trip: {
+    gtfsId: string;
+    route: { shortName: string | null; mode: string } | null;
+  } | null;
+}
+
+export interface OtpGraphQlStopResponse {
+  data?: {
+    stop: {
+      name: string;
+      stoptimesWithoutPatterns: OtpGraphQlStoptimeNode[];
+    } | null;
+  };
+  errors?: { message: string }[];
+}
+
+/** Passage OTP brut (horaire theorique), avant croisement avec les
+ * perturbations GTFS-RT — voir ArretsService.prochainsPassages. */
+export interface OtpProchainPassage {
+  ligne: string;
+  destination: string;
+  mode: ModeTransport;
+  dansMinutes: number;
+  /** Identifiant de voyage GTFS (prefixe de feed OTP retire), pour croiser
+   * avec PerturbationTrajet.tripId (meme format que le flux GTFS-RT brut). */
+  voyageId?: string;
+}

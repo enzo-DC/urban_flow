@@ -582,22 +582,32 @@ button {
   justify-content: center;
 }
 
-/* Arrets de transport en commun (bus/metro/tram, issus d'OTP) : simples
-   points decoratifs, jamais interactifs (pas de bouton/focus) — a cette
-   densite sur la carte, des cibles tactiles de 48px les rendraient
-   illisibles en se chevauchant. Coherent avec les marqueurs depart/arrivee,
-   deja non interactifs eux aussi. Une seule couleur (primaire) pour tout
-   transport en commun, sans distinction bus/metro/tram : c'est deja la
-   convention du trace d'itineraire lui-meme (COULEUR_MODE) — ne pas
-   improviser une nouvelle teinte hors des roles definis par le design
-   system (le vert reste reserve au carbone, l'orange a l'alerte). */
+/* Arrets de transport en commun (bus/metro/tram, issus d'OTP) : cliquables
+   (prochains passages), mais leur taille visuelle reste sous les 48px
+   habituels — a cette densite sur la carte (jusqu'a 200 arrets), des
+   cibles tactiles pleine taille se chevaucheraient et rendraient la carte
+   illisible/inutilisable. De vrais <button>, donc toujours operables au
+   clavier (Tab + Entree) malgre leur taille ; la liste textuelle des
+   itineraires reste par ailleurs l'acces complet et sans souris a
+   l'information de trajet (regle du dossier, deja appliquee a la carte
+   elle-meme). Une seule couleur (primaire) pour tout transport en commun,
+   sans distinction bus/metro/tram : c'est deja la convention du trace
+   d'itineraire lui-meme (COULEUR_MODE) — ne pas improviser une nouvelle
+   teinte hors des roles definis par le design system (le vert reste
+   reserve au carbone, l'orange a l'alerte). */
 .arret-point {
   width: 10px;
   height: 10px;
+  padding: 0;
   border-radius: 50%;
   background: var(--primary);
   border: 1.5px solid var(--white);
   box-shadow: 0 0 0 1px rgba(15, 27, 38, 0.25);
+  cursor: pointer;
+}
+.arret-point:focus-visible {
+  outline: 2px solid var(--primary-dark);
+  outline-offset: 2px;
 }
 
 /* Stations velo/scooter en libre-service : meme logique non interactive que
@@ -618,6 +628,58 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Popup MapLibre (prochains passages d'un arret) — reprend les jetons du
+   design system plutot que le style par defaut de la librairie. */
+.maplibregl-popup-content {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(15, 27, 38, 0.18);
+}
+.popup-arret-titre {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  padding-right: 12px;
+}
+.popup-arret-corps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--slate);
+}
+.popup-passage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.popup-passage-ligne {
+  flex-shrink: 0;
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-primary);
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+}
+.popup-passage-destination {
+  flex: 1;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.popup-passage-minutes {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--ink);
+}
+.popup-passage-minutes.popup-passage-alerte {
+  color: var(--alert);
 }
 
 /* Les boutons de controle MapLibre par defaut font 29px (zoom, geoloc) —
