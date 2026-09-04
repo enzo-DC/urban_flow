@@ -79,22 +79,22 @@ export class VeloToulouseProvider implements FournisseurMobilite {
       this.fetchJson<GbfsStationInformationResponse>(infoUrl),
     ]);
 
-    const positionParStation = new Map(
-      info.data.stations.map((station) => [
-        station.station_id,
-        { latitude: station.lat, longitude: station.lon },
-      ]),
+    const infoParStation = new Map(
+      info.data.stations.map((station) => [station.station_id, station]),
     );
 
     const stations: VehiculeDisponible[] = [];
     for (const station of status.data.stations) {
-      const position = positionParStation.get(station.station_id);
-      if (!position) continue;
+      const details = infoParStation.get(station.station_id);
+      if (!details) continue;
       stations.push({
         id: station.station_id,
         mode: 'velo',
-        position,
+        position: { latitude: details.lat, longitude: details.lon },
         disponible: station.num_bikes_available,
+        nom: details.name,
+        adresse: details.address,
+        capacite: details.capacity,
       });
     }
 

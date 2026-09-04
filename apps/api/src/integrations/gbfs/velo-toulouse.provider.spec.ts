@@ -91,6 +91,68 @@ describe('VeloToulouseProvider', () => {
     );
   });
 
+  it('transmet le nom, l’adresse et la capacite de la station quand le flux les fournit', async () => {
+    const redis = buildRedis(null);
+    global.fetch = jest.fn((url: string) => {
+      if (url === DISCOVERY_URL) {
+        return Promise.resolve(
+          jsonResponse({
+            data: {
+              fr: {
+                feeds: [
+                  { name: 'station_information', url: INFO_URL },
+                  { name: 'station_status', url: STATUS_URL },
+                ],
+              },
+            },
+          }),
+        );
+      }
+      if (url === INFO_URL) {
+        return Promise.resolve(
+          jsonResponse({
+            data: {
+              stations: [
+                {
+                  station_id: '1',
+                  lat: 43.60419,
+                  lon: 1.445475,
+                  name: "POIDS DE L'HUILE",
+                  address: "12 RUE DU POIDS DE L'HUILE",
+                  capacity: 19,
+                },
+              ],
+            },
+          }),
+        );
+      }
+      if (url === STATUS_URL) {
+        return Promise.resolve(
+          jsonResponse({
+            ttl: 45,
+            data: { stations: [{ station_id: '1', num_bikes_available: 2 }] },
+          }),
+        );
+      }
+      return Promise.reject(new Error(`URL inattendue : ${url}`));
+    });
+
+    const provider = new VeloToulouseProvider(redis, buildConfig());
+    const result = await provider.disponibilites();
+
+    expect(result).toEqual([
+      {
+        id: '1',
+        mode: 'velo',
+        position: { latitude: 43.60419, longitude: 1.445475 },
+        disponible: 2,
+        nom: "POIDS DE L'HUILE",
+        adresse: "12 RUE DU POIDS DE L'HUILE",
+        capacite: 19,
+      },
+    ]);
+  });
+
   it('sert le cache sans appeler les flux si une entree est presente', async () => {
     const cachedStations = [
       {

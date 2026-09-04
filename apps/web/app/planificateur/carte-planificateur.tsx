@@ -248,18 +248,75 @@ export function CartePlanificateur({
 
       for (const marqueur of stationsMarqueursRef.current) marqueur.remove();
       stationsMarqueursRef.current = visibles.map((vehicule) => {
-        const point = document.createElement('div');
+        // Vrai <button>, comme les arrets : cliquable (nom, adresse,
+        // capacite ou autonomie), mais reste sous 48px pour ne pas faire
+        // se chevaucher des stations tres proches (meme raisonnement que
+        // .arret-point).
+        const point = document.createElement('button');
+        point.type = 'button';
         point.className = 'station-point';
         point.style.background = COULEUR_MODE[vehicule.mode] ?? '#5a6b7b';
         point.textContent = String(vehicule.disponible);
-        point.title =
-          vehicule.mode === 'scooter'
-            ? `${vehicule.disponible} scooter(s) disponible(s)`
-            : `${vehicule.disponible} vélo(s) disponible(s)`;
+        point.setAttribute(
+          'aria-label',
+          `${vehicule.nom ?? (vehicule.mode === 'scooter' ? 'Scooter Yego' : 'Station VélôToulouse')} — voir le détail`,
+        );
+        point.addEventListener('click', () => {
+          ouvrirPopupStation(carte, vehicule);
+        });
         return new Marker({ element: point })
           .setLngLat([vehicule.position.longitude, vehicule.position.latitude])
           .addTo(carte);
       });
+    }
+
+    function ouvrirPopupStation(
+      carte: MapLibreMap,
+      vehicule: VehiculeDisponible,
+    ) {
+      popupOuvertRef.current?.remove();
+
+      const contenu = document.createElement('div');
+      contenu.className = 'popup-arret';
+      const titre = document.createElement('p');
+      titre.className = 'popup-arret-titre';
+      titre.textContent =
+        vehicule.nom ??
+        (vehicule.mode === 'scooter' ? 'Scooter Yego' : 'Station VélôToulouse');
+      contenu.appendChild(titre);
+
+      if (vehicule.adresse) {
+        const adresse = document.createElement('p');
+        adresse.className = 'popup-station-adresse';
+        adresse.textContent = vehicule.adresse;
+        contenu.appendChild(adresse);
+      }
+
+      const detail = document.createElement('p');
+      detail.className = 'popup-station-detail';
+      if (vehicule.mode === 'scooter') {
+        detail.textContent =
+          vehicule.autonomieMetres !== undefined
+            ? `${(vehicule.autonomieMetres / 1000).toFixed(1)} km d'autonomie restante`
+            : 'Autonomie inconnue';
+      } else {
+        detail.textContent =
+          vehicule.capacite !== undefined
+            ? `${vehicule.disponible} vélo(s) disponible(s) sur ${vehicule.capacite}`
+            : `${vehicule.disponible} vélo(s) disponible(s)`;
+      }
+      contenu.appendChild(detail);
+
+      // closeOnClick: false — meme correctif que ouvrirPopupArret, meme
+      // cause (le clic qui ouvre le popup se referme sinon tout seul).
+      popupOuvertRef.current = new Popup({
+        closeButton: true,
+        closeOnClick: false,
+        maxWidth: '260px',
+      })
+        .setLngLat([vehicule.position.longitude, vehicule.position.latitude])
+        .setDOMContent(contenu)
+        .addTo(carte);
     }
 
     async function chargerArrets(carte: MapLibreMap, requeteId: number) {

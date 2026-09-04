@@ -10,6 +10,9 @@ export interface GbfsStationInformationResponse {
       station_id: string;
       lat: number;
       lon: number;
+      name?: string;
+      address?: string;
+      capacity?: number;
     }[];
   };
 }
@@ -34,6 +37,7 @@ export interface GbfsFreeVehicleStatusResponse {
       lon: number;
       is_reserved: boolean;
       is_disabled: boolean;
+      current_range_meters?: number;
     }[];
   };
 }
