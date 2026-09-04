@@ -582,6 +582,19 @@ button {
   justify-content: center;
 }
 
+/* Les boutons de controle MapLibre par defaut font 29px (zoom, geoloc) —
+   sous la cible tactile minimale de 48px imposee par le design system.
+   Corrige ici plutot que de re-styliser chaque controle un par un.
+   Specificite (.map-shell + .maplibregl-ctrl-group) volontairement plus
+   elevee que la regle source de maplibre-gl.css (meme selecteur seul) :
+   sans ca, l'ordre d'import (le CSS du composant carte est importe apres
+   globals.css) fait gagner la regle de la librairie — verifie en conditions
+   reelles (Playwright), pas suppose. */
+.map-shell .maplibregl-ctrl-group button {
+  width: 48px;
+  height: 48px;
+}
+
 .trip-results {
   display: flex;
   flex-direction: column;

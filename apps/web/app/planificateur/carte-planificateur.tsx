@@ -2,6 +2,7 @@
 
 import type { Itineraire, LieuGeocode } from '@urbanflow/shared';
 import {
+  GeolocateControl,
   LngLatBounds,
   Map as MapLibreMap,
   Marker,
@@ -26,6 +27,18 @@ const STYLE_OSM: StyleSpecification = {
     },
   },
   layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+};
+
+// MapLibre ne fournit ses controles qu'en anglais par defaut (voir
+// default_locale.ts du paquet) — seules les cles reellement utilisees par
+// les controles ajoutes ci-dessous (Navigation + Geolocate) sont traduites.
+const LOCALE_FR: Record<string, string> = {
+  'NavigationControl.ZoomIn': 'Zoomer',
+  'NavigationControl.ZoomOut': 'Dézoomer',
+  'NavigationControl.ResetBearing':
+    'Faites glisser pour pivoter, cliquez pour réinitialiser le nord',
+  'GeolocateControl.FindMyLocation': 'Afficher ma position',
+  'GeolocateControl.LocationNotAvailable': 'Position indisponible',
 };
 
 const COULEUR_MODE: Record<string, string> = {
@@ -61,8 +74,22 @@ export function CartePlanificateur({
       style: STYLE_OSM,
       center: CENTRE_TOULOUSE,
       zoom: 12,
+      locale: LOCALE_FR,
     });
     carte.addControl(new NavigationControl(), 'top-right');
+    // Point bleu façon Google Maps : bouton dédié, jamais activé
+    // automatiquement (la géolocalisation continue reste un choix explicite
+    // de l'utilisateur — trackUserLocation ne fait que suivre, ne recentre
+    // pas la carte ni ne recalcule l'itinéraire).
+    carte.addControl(
+      new GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+        showUserLocation: true,
+        showAccuracyCircle: true,
+      }),
+      'top-right',
+    );
     carteRef.current = carte;
     return () => {
       carte.remove();
