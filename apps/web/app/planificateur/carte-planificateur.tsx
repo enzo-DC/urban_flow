@@ -4,6 +4,7 @@ import type {
   ArretTransport,
   Itineraire,
   LieuGeocode,
+  VehiculeDisponible,
 } from '@urbanflow/shared';
 import {
   GeolocateControl,
@@ -45,6 +46,12 @@ const LOCALE_FR: Record<string, string> = {
   'GeolocateControl.LocationNotAvailable': 'Position indisponible',
 };
 
+// Meme logique de lisibilite que le plafond cote API pour les arrets
+// (MAX_ARRETS, otp-client.service.ts) : VeloToulouse seul depasse 400
+// stations en ville, largement au-dela de ce qu'une carte peut afficher
+// lisiblement une fois filtree a la zone visible.
+const MAX_STATIONS = 200;
+
 const COULEUR_MODE: Record<string, string> = {
   marche: '#5a6b7b',
   velo: '#1e7a46',
@@ -60,17 +67,27 @@ interface CartePlanificateurProps {
   depart: LieuGeocode | null;
   arrivee: LieuGeocode | null;
   itineraire: Itineraire | null;
+  /** Velos/scooters en libre-service, deja recus avec la reponse de recherche
+   * d'itineraire (pas de requete carte dediee) — filtres a la zone visible
+   * au moment de l'affichage. */
+  disponibilites: VehiculeDisponible[];
 }
 
 export function CartePlanificateur({
   depart,
   arrivee,
   itineraire,
+  disponibilites,
 }: CartePlanificateurProps) {
   const conteneurRef = useRef<HTMLDivElement>(null);
   const carteRef = useRef<MapLibreMap | null>(null);
   const marqueursRef = useRef<Marker[]>([]);
   const arretsMarqueursRef = useRef<Marker[]>([]);
+  const stationsMarqueursRef = useRef<Marker[]>([]);
+  const disponibilitesRef = useRef<VehiculeDisponible[]>(disponibilites);
+  useEffect(() => {
+    disponibilitesRef.current = disponibilites;
+  }, [disponibilites]);
   // Ecarte une reponse d'arrets perimee (recherche precedente) qui
   // arriverait apres une nouvelle : seule la derniere requete en vol compte.
   const arretsRequeteIdRef = useRef(0);
@@ -189,17 +206,52 @@ export function CartePlanificateur({
 
       for (const marqueur of arretsMarqueursRef.current) marqueur.remove();
       arretsMarqueursRef.current = [];
+      for (const marqueur of stationsMarqueursRef.current) marqueur.remove();
+      stationsMarqueursRef.current = [];
 
       if (hasBounds) {
         carte.fitBounds(bounds, { padding: 56, maxZoom: 15, duration: 400 });
-        // Attend la fin de l'animation pour interroger exactement la zone
-        // visible a l'ecran (carte.getBounds()), pas la zone approximative
-        // avant fitBounds.
+        // Attend la fin de l'animation pour interroger/filtrer exactement la
+        // zone visible a l'ecran (carte.getBounds()), pas la zone
+        // approximative avant fitBounds.
         const requeteId = ++arretsRequeteIdRef.current;
         carte.once('moveend', () => {
           void chargerArrets(carte, requeteId);
+          dessinerStations(carte);
         });
       }
+    }
+
+    // Filtre cote client (les donnees sont deja recues avec la reponse de
+    // recherche d'itineraire, aucune requete dediee) a la zone visible :
+    // VeloToulouse seul compte plus de 400 stations en ville, les afficher
+    // toutes rendrait la carte illisible bien avant d'atteindre un plafond
+    // comme celui des arrets.
+    function dessinerStations(carte: MapLibreMap) {
+      const zone = carte.getBounds();
+      const visibles = disponibilitesRef.current
+        .filter((vehicule) =>
+          zone.contains([
+            vehicule.position.longitude,
+            vehicule.position.latitude,
+          ]),
+        )
+        .slice(0, MAX_STATIONS);
+
+      for (const marqueur of stationsMarqueursRef.current) marqueur.remove();
+      stationsMarqueursRef.current = visibles.map((vehicule) => {
+        const point = document.createElement('div');
+        point.className = 'station-point';
+        point.style.background = COULEUR_MODE[vehicule.mode] ?? '#5a6b7b';
+        point.textContent = String(vehicule.disponible);
+        point.title =
+          vehicule.mode === 'scooter'
+            ? `${vehicule.disponible} scooter(s) disponible(s)`
+            : `${vehicule.disponible} vélo(s) disponible(s)`;
+        return new Marker({ element: point })
+          .setLngLat([vehicule.position.longitude, vehicule.position.latitude])
+          .addTo(carte);
+      });
     }
 
     async function chargerArrets(carte: MapLibreMap, requeteId: number) {

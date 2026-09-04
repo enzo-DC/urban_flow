@@ -600,6 +600,26 @@ button {
   box-shadow: 0 0 0 1px rgba(15, 27, 38, 0.25);
 }
 
+/* Stations velo/scooter en libre-service : meme logique non interactive que
+   .arret-point, mais assez grandes pour porter le nombre de vehicules
+   disponibles (deja recu avec la reponse de recherche, jamais interroge a
+   part). Couleur par mode reprise de COULEUR_MODE (carte-planificateur.tsx),
+   pas improvisee. */
+.station-point {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--white);
+  box-shadow: 0 0 0 1px rgba(15, 27, 38, 0.25);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Les boutons de controle MapLibre par defaut font 29px (zoom, geoloc) —
    sous la cible tactile minimale de 48px imposee par le design system.
    Corrige ici plutot que de re-styliser chaque controle un par un.
