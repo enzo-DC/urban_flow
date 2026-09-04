@@ -5,6 +5,7 @@ import type {
   Itineraire,
   LieuGeocode,
   ReponseItineraires,
+  VehiculeDisponible,
 } from '@urbanflow/shared';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
@@ -34,6 +35,9 @@ export function PlanificateurForm() {
   const [critereTri, setCritereTri] = useState<CritereTri>('duree');
   const [accessible, setAccessible] = useState(false);
   const [itineraires, setItineraires] = useState<Itineraire[]>([]);
+  const [disponibilites, setDisponibilites] = useState<VehiculeDisponible[]>(
+    [],
+  );
   const [selectionId, setSelectionId] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -101,6 +105,7 @@ export function PlanificateurForm() {
     setPending(true);
     setErreur(null);
     setItineraires([]);
+    setDisponibilites([]);
     setSelectionId(null);
     try {
       const res = await fetch('/api/itineraires', {
@@ -121,6 +126,7 @@ export function PlanificateurForm() {
       }
       const body = (await res.json()) as ReponseItineraires;
       setItineraires(body.itineraires);
+      setDisponibilites(body.disponibilites);
       if (body.itineraires.length === 0) {
         setErreur('Aucun itinéraire trouvé pour ce trajet.');
       }
@@ -245,6 +251,7 @@ export function PlanificateurForm() {
         depart={depart}
         arrivee={arrivee}
         itineraire={itineraireSelectionne}
+        disponibilites={disponibilites}
       />
 
       {itineraires.length > 0 && (
