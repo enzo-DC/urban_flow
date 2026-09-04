@@ -800,6 +800,25 @@ button {
   font-weight: 600;
 }
 
+.trip-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.trip-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.trip-detail-trajet {
+  font-size: 13px;
+  color: var(--slate);
+}
+
 /* ============ Mon impact (Phase 7) ============ */
 
 .impact-hero {

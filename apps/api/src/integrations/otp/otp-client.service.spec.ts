@@ -90,6 +90,50 @@ describe('OtpClientService', () => {
     ]);
   });
 
+  it('transmet le nom des points de depart/arrivee de chaque segment (affichage du detail d’itineraire)', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse({
+        data: {
+          planConnection: {
+            edges: [
+              {
+                node: {
+                  duration: 225,
+                  legs: [
+                    {
+                      mode: 'SUBWAY',
+                      duration: 225,
+                      distance: 2876.26,
+                      from: {
+                        lat: 43.6045057,
+                        lon: 1.4455115,
+                        name: 'Capitole',
+                      },
+                      to: {
+                        lat: 43.5932124,
+                        lon: 1.4192796,
+                        name: 'Basso Cambo',
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    const client = new OtpClientService(buildConfig());
+    const result = await client.planifier(
+      { latitude: 43.6045057, longitude: 1.4455115 },
+      { latitude: 43.5932124, longitude: 1.4192796 },
+    );
+
+    expect(result[0].legs[0].departNom).toBe('Capitole');
+    expect(result[0].legs[0].arriveeNom).toBe('Basso Cambo');
+  });
+
   it('transmet preferences.accessibility.wheelchair.enabled selon le parametre accessible', async () => {
     let corpsRecu: { variables: { preferences: unknown } } | undefined;
     global.fetch = jest.fn((_url: string, init: RequestInit) => {

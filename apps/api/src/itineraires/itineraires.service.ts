@@ -118,6 +118,8 @@ export class ItinerairesService {
       operateur: leg.ligneId,
       co2Grammes: calculerCo2Grammes(leg.mode, leg.distanceMetres),
       trace: leg.trace,
+      departNom: leg.departNom,
+      arriveeNom: leg.arriveeNom,
     }));
 
     return {

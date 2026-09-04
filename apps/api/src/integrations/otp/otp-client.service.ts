@@ -58,8 +58,8 @@ const PLAN_QUERY = `
             mode
             duration
             distance
-            from { lat lon }
-            to { lat lon }
+            from { lat lon name }
+            to { lat lon name }
             route { gtfsId }
             trip { gtfsId }
             legGeometry { points }
@@ -260,6 +260,8 @@ export class OtpClientService {
         ligneId: leg.route ? retirerPrefixeFeed(leg.route.gtfsId) : undefined,
         voyageId: leg.trip ? retirerPrefixeFeed(leg.trip.gtfsId) : undefined,
         trace: leg.legGeometry?.points,
+        departNom: leg.from.name ?? undefined,
+        arriveeNom: leg.to.name ?? undefined,
       })),
     };
   }

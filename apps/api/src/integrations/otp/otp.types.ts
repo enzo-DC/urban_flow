@@ -12,6 +12,9 @@ export interface OtpLeg {
   voyageId?: string;
   /** Trace du segment, polyline encodee (format Google, precision 5), pour affichage carte. */
   trace?: string;
+  /** Nom du point de depart/arrivee (arret, adresse) — pour affichage du detail d'itineraire. */
+  departNom?: string;
+  arriveeNom?: string;
 }
 
 export interface OtpItineraire {
@@ -23,8 +26,8 @@ export interface OtpGraphQlLegNode {
   mode: string;
   duration: number;
   distance: number;
-  from: { lat: number; lon: number };
-  to: { lat: number; lon: number };
+  from: { lat: number; lon: number; name: string | null };
+  to: { lat: number; lon: number; name: string | null };
   route: { gtfsId: string } | null;
   trip: { gtfsId: string } | null;
   legGeometry: { points: string } | null;
