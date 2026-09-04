@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { peutEtreAuthentifie } from '../_lib/auth-cookies';
 import { IconChevronLeft } from '../components/icons';
 import { ProfilForm } from './profil-form';
 
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function ProfilPage() {
   const cookieStore = await cookies();
-  if (!cookieStore.get('access_token')) {
+  if (!peutEtreAuthentifie(cookieStore)) {
     redirect('/connexion');
   }
 

@@ -28,11 +28,21 @@ export async function callAuthenticated(
   init: RequestInit = {},
 ): Promise<AuthedResult | null> {
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
-  if (!accessToken) return null;
 
-  const first = await callBackend(path, withAuth(init, accessToken));
-  if (first.status !== 401) {
-    return { status: first.status, body: first.body };
+  // access_token (15 min) expire bien plus vite que refresh_token (7 j) —
+  // c'est le fonctionnement normal, pas une deconnexion. Auparavant,
+  // l'absence du cookie access_token (supprime par le navigateur a
+  // expiration) faisait echouer l'authentification sans jamais tenter le
+  // refresh, forcant une reconnexion manuelle toutes les 15 min alors que
+  // le refresh token restait valide — vrai bug trouve en lisant le flux
+  // complet, pas suppose. Le seul cas qui doit vraiment echouer est
+  // l'absence des deux cookies (jamais connecte, ou refresh_token lui-meme
+  // expire/revoque).
+  if (accessToken) {
+    const first = await callBackend(path, withAuth(init, accessToken));
+    if (first.status !== 401) {
+      return { status: first.status, body: first.body };
+    }
   }
 
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
@@ -70,7 +80,7 @@ export function applyRefreshedCookies(
     response.cookies.set(
       REFRESH_COOKIE,
       result.refreshedRefreshToken,
-      cookieOptions(REFRESH_TOKEN_MAX_AGE, '/api/auth'),
+      cookieOptions(REFRESH_TOKEN_MAX_AGE),
     );
   }
 }
