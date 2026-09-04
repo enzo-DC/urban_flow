@@ -4,6 +4,7 @@ export * from './types/segment';
 export * from './types/itineraire';
 export * from './types/vehicule-disponible';
 export * from './types/arret-transport';
+export * from './types/prochain-passage';
 export * from './types/reponse-itineraires';
 export * from './types/lieu-geocode';
 export * from './types/impact-carbone';
