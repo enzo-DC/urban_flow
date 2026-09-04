@@ -52,9 +52,11 @@ test.describe('Accessibilite (axe-core) — pages principales', () => {
   });
 
   // Le planificateur a jusqu'ici toujours ete audite a vide (formulaire
-  // seul) : les cartes de resultat, le groupe de tri et le bouton "j'ai
-  // fait ce trajet", qui n'apparaissent qu'apres une recherche reelle,
-  // n'avaient jamais ete passes a axe-core.
+  // seul) : les cartes de resultat et le groupe de tri, qui n'apparaissent
+  // qu'apres une recherche reelle, n'avaient jamais ete passes a axe-core.
+  // Choisir un itineraire navigue desormais vers /planificateur/trajet (voir
+  // plus bas) : cette page-ci reste auditee sur l'etat "resultats affiches,
+  // rien de choisi", deja visible sans clic (apercu carte du 1er resultat).
   test('planificateur avec des resultats de recherche affiches', async ({
     page,
   }) => {
@@ -78,7 +80,47 @@ test.describe('Accessibilite (axe-core) — pages principales', () => {
       .getByRole('button', { name: 'Rechercher un itinéraire' })
       .click();
     await page.locator('.trip-card').first().waitFor({ state: 'visible' });
+
+    const resultats = await new AxeBuilder({ page }).analyze();
+    const critiques = resultats.violations.filter(
+      (v) => v.impact === 'critical',
+    );
+    expect(
+      critiques,
+      critiques.map((v) => `${v.id}: ${v.description}`).join('\n'),
+    ).toHaveLength(0);
+  });
+
+  // Nouvelle page (etapes pas a pas, prochains passages) : jamais auditee
+  // jusqu'ici, verifiee separement du planificateur lui-meme.
+  test('trajet complet (detail etape par etape)', async ({ page }) => {
+    await page.goto('/planificateur');
+
+    await page.getByLabel('Départ').fill('Place du Capitole, Toulouse');
+    await page
+      .locator('.search-results li button')
+      .first()
+      .waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('.search-results li button').first().click();
+
+    await page.getByLabel('Destination').fill('Aéroport Toulouse-Blagnac');
+    await page
+      .locator('.search-results li button')
+      .first()
+      .waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('.search-results li button').first().click();
+
+    await page
+      .getByRole('button', { name: 'Rechercher un itinéraire' })
+      .click();
+    await page.locator('.trip-card').first().waitFor({ state: 'visible' });
     await page.locator('.trip-card').first().click();
+
+    await page.waitForURL('/planificateur/trajet');
+    await page
+      .locator('.trip-detail-step')
+      .first()
+      .waitFor({ state: 'visible', timeout: 15_000 });
 
     const resultats = await new AxeBuilder({ page }).analyze();
     const critiques = resultats.violations.filter(

@@ -1,4 +1,8 @@
-import type { Coordonnees, ModeTransport } from '@urbanflow/shared';
+import type {
+  Coordonnees,
+  EtapeMarche,
+  ModeTransport,
+} from '@urbanflow/shared';
 
 export interface OtpLeg {
   mode: ModeTransport;
@@ -15,6 +19,13 @@ export interface OtpLeg {
   /** Nom du point de depart/arrivee (arret, adresse) — pour affichage du detail d'itineraire. */
   departNom?: string;
   arriveeNom?: string;
+  /** Transport en commun uniquement : nom de ligne affiche et direction (terminus). */
+  ligne?: string;
+  direction?: string;
+  /** Transport en commun uniquement : horaire theorique de depart du point d'embarquement (ISO 8601). */
+  departHeure?: string;
+  /** Marche uniquement : etapes detaillees (virages, rues). */
+  etapes?: EtapeMarche[];
 }
 
 export interface OtpItineraire {
@@ -22,15 +33,32 @@ export interface OtpItineraire {
   legs: OtpLeg[];
 }
 
+interface OtpGraphQlPlace {
+  lat: number;
+  lon: number;
+  name: string | null;
+  stop: { gtfsId: string } | null;
+  departure: { scheduledTime: string } | null;
+  arrival: { scheduledTime: string } | null;
+}
+
+export interface OtpGraphQlStep {
+  streetName: string | null;
+  relativeDirection: string;
+  distance: number;
+}
+
 export interface OtpGraphQlLegNode {
   mode: string;
   duration: number;
   distance: number;
-  from: { lat: number; lon: number; name: string | null };
-  to: { lat: number; lon: number; name: string | null };
-  route: { gtfsId: string } | null;
+  from: OtpGraphQlPlace;
+  to: OtpGraphQlPlace;
+  route: { gtfsId: string; shortName: string | null } | null;
   trip: { gtfsId: string } | null;
+  headsign: string | null;
   legGeometry: { points: string } | null;
+  steps: OtpGraphQlStep[] | null;
 }
 
 export interface OtpGraphQlPlanNode {

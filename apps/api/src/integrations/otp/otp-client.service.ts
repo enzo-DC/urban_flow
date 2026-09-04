@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { ArretTransport, Coordonnees } from '@urbanflow/shared';
 import { fetchWithTimeout } from '../http-client.util';
 import { versModeTransport } from './otp-mode.mapper';
+import { versDirectionFrancaise, versNomRue } from './otp-direction.mapper';
 import type {
   OtpGraphQlResponse,
   OtpGraphQlStopResponse,
@@ -58,11 +59,13 @@ const PLAN_QUERY = `
             mode
             duration
             distance
-            from { lat lon name }
-            to { lat lon name }
-            route { gtfsId }
+            from { lat lon name stop { gtfsId } departure { scheduledTime } }
+            to { lat lon name stop { gtfsId } arrival { scheduledTime } }
+            route { gtfsId shortName }
             trip { gtfsId }
+            headsign
             legGeometry { points }
+            steps { streetName relativeDirection distance }
           }
         }
       }
@@ -262,6 +265,24 @@ export class OtpClientService {
         trace: leg.legGeometry?.points,
         departNom: leg.from.name ?? undefined,
         arriveeNom: leg.to.name ?? undefined,
+        // Uniquement pertinent pour le transport en commun : un leg de
+        // marche n'a ni ligne ni horaire programme. leg.from.stop n'existe
+        // que quand le point de depart est un vrai arret GTFS (jamais pour
+        // un point de marche arbitraire) — verifie en conditions reelles
+        // avant d'ecrire ce mapping (Place.stop null sur les legs WALK).
+        ligne: leg.from.stop ? (leg.route?.shortName ?? undefined) : undefined,
+        direction: leg.from.stop ? (leg.headsign ?? undefined) : undefined,
+        departHeure: leg.from.stop
+          ? (leg.from.departure?.scheduledTime ?? undefined)
+          : undefined,
+        etapes:
+          leg.mode === 'WALK' && leg.steps?.length
+            ? leg.steps.map((step) => ({
+                direction: versDirectionFrancaise(step.relativeDirection),
+                rue: versNomRue(step.streetName),
+                distanceMetres: step.distance,
+              }))
+            : undefined,
       })),
     };
   }

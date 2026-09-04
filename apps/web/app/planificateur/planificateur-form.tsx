@@ -10,8 +10,10 @@ import type {
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { CarteResultat, formatDuree, LABEL_MODE } from './carte-resultat';
+import { sauvegarderHorsLigne } from '../_lib/offline-store';
+import { CarteResultat } from './carte-resultat';
 import { ChampAdresse } from './champ-adresse';
+import { TRAJET_EN_COURS_CLE } from './trajet/trajet-en-cours';
 
 const CartePlanificateur = dynamic(
   () => import('./carte-planificateur').then((mod) => mod.CartePlanificateur),
@@ -38,16 +40,15 @@ export function PlanificateurForm() {
   const [disponibilites, setDisponibilites] = useState<VehiculeDisponible[]>(
     [],
   );
-  const [selectionId, setSelectionId] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [geolocEnCours, setGeolocEnCours] = useState(false);
-  const [enregistrement, setEnregistrement] = useState<
-    'idle' | 'pending' | 'error'
-  >('idle');
 
-  const itineraireSelectionne =
-    itineraires.find((it) => it.id === selectionId) ?? itineraires[0] ?? null;
+  // Simple aperçu sur la carte pendant la comparaison des options — le
+  // choix effectif d'un itineraire navigue immediatement vers la page
+  // dediee (voir choisirItineraire), il n'y a plus de "selection qui
+  // reste" sur cette page.
+  const itineraireApercu = itineraires[0] ?? null;
 
   // Pre-coche le trajet accessible si l'utilisateur connecte l'a deja
   // demande dans son profil ; reste decochable au cas par cas, et ne fait
@@ -106,7 +107,6 @@ export function PlanificateurForm() {
     setErreur(null);
     setItineraires([]);
     setDisponibilites([]);
-    setSelectionId(null);
     try {
       const res = await fetch('/api/itineraires', {
         method: 'POST',
@@ -139,41 +139,20 @@ export function PlanificateurForm() {
     }
   }
 
-  async function enregistrerTrajet() {
-    if (!itineraireSelectionne) return;
-    setEnregistrement('pending');
-    try {
-      const res = await fetch('/api/trajets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          depart: itineraireSelectionne.depart,
-          arrivee: itineraireSelectionne.arrivee,
-          // Ne transmet que ce que l'API accepte : ni id ni co2Grammes
-          // (jamais fait confiance a un total calcule cote client), ni
-          // trace (jamais collectee ni transmise, RGPD).
-          segments: itineraireSelectionne.segments.map((segment) => ({
-            mode: segment.mode,
-            depart: segment.depart,
-            arrivee: segment.arrivee,
-            distanceMetres: segment.distanceMetres,
-            dureeSecondes: segment.dureeSecondes,
-            operateur: segment.operateur,
-          })),
-        }),
-      });
-      if (res.status === 401) {
-        router.push('/connexion');
-        return;
-      }
-      if (!res.ok) {
-        setEnregistrement('error');
-        return;
-      }
-      router.push('/mon-impact');
-    } catch {
-      setEnregistrement('error');
-    }
+  // Choisir un itineraire dans la liste navigue immediatement vers la page
+  // dediee « trajet complet » (etape par etape, prochains passages) —
+  // aucun endpoint pour re-recuperer un itineraire par id (calcule a la
+  // volee, jamais persiste), donc transmis via IndexedDB (offline-store,
+  // deja utilise par le projet pour l'impact/le profil hors-ligne) plutot
+  // que par l'URL.
+  async function choisirItineraire(itineraire: Itineraire) {
+    await sauvegarderHorsLigne(TRAJET_EN_COURS_CLE, {
+      itineraire,
+      depart,
+      arrivee,
+      disponibilites,
+    });
+    router.push('/planificateur/trajet');
   }
 
   return (
@@ -250,7 +229,7 @@ export function PlanificateurForm() {
       <CartePlanificateur
         depart={depart}
         arrivee={arrivee}
-        itineraire={itineraireSelectionne}
+        itineraire={itineraireApercu}
         disponibilites={disponibilites}
       />
 
@@ -260,61 +239,12 @@ export function PlanificateurForm() {
             <li key={itineraire.id}>
               <CarteResultat
                 itineraire={itineraire}
-                selectionne={itineraire.id === itineraireSelectionne?.id}
-                onSelect={() => setSelectionId(itineraire.id)}
+                selectionne={itineraire.id === itineraireApercu?.id}
+                onSelect={() => void choisirItineraire(itineraire)}
               />
             </li>
           ))}
         </ul>
-      )}
-
-      {itineraireSelectionne && (
-        <div className="trip-confirm">
-          <p>
-            Itinéraire sélectionné :{' '}
-            {formatDuree(itineraireSelectionne.dureeSecondes)},{' '}
-            {itineraireSelectionne.co2Grammes} g de CO2.
-          </p>
-
-          <ul className="trip-detail" aria-label="Détail de l'itinéraire">
-            {itineraireSelectionne.segments.map((segment, index) => (
-              <li key={index} className="trip-detail-row">
-                <span className={`trip-mode trip-mode-${segment.mode}`}>
-                  {LABEL_MODE[segment.mode]}
-                </span>
-                {/* Uniquement pour le transport en commun : verifie en
-                    conditions reelles (production) que les segments a pied
-                    reçoivent des noms generiques peu utiles ("Origin",
-                    "Destination", ou le meme nom aux deux bouts pour une
-                    correspondance a l'interieur d'une station), alors que
-                    bus/metro/tram ont toujours de vrais noms d'arret. */}
-                {segment.mode !== 'marche' &&
-                  segment.departNom &&
-                  segment.arriveeNom && (
-                    <span className="trip-detail-trajet">
-                      {segment.departNom} → {segment.arriveeNom}
-                    </span>
-                  )}
-              </li>
-            ))}
-          </ul>
-
-          <button
-            type="button"
-            className="btn btn-primary btn-block"
-            disabled={enregistrement === 'pending'}
-            onClick={() => void enregistrerTrajet()}
-          >
-            {enregistrement === 'pending'
-              ? 'Enregistrement…'
-              : 'J’ai fait ce trajet'}
-          </button>
-          {enregistrement === 'error' && (
-            <p className="form-banner error" role="alert">
-              Impossible d’enregistrer ce trajet pour le moment. Réessaie.
-            </p>
-          )}
-        </div>
       )}
     </div>
   );

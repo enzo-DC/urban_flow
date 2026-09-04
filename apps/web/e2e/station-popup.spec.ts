@@ -21,7 +21,9 @@ test('cliquer sur une station vélo/scooter affiche le détail (nom, adresse, di
 
   await page.getByRole('button', { name: 'Rechercher un itinéraire' }).click();
   await page.locator('.trip-card').first().waitFor({ state: 'visible' });
-  await page.locator('.trip-card').first().click();
+  // Choisir un itineraire n'est plus necessaire : la carte affiche desormais
+  // un apercu du premier resultat des la recherche (voir choisirItineraire
+  // dans planificateur-form.tsx).
   await page.locator('.station-point').first().waitFor({ state: 'attached' });
 
   // Meme ciblage robuste que arret-passages.spec.ts : une station peut se
