@@ -53,3 +53,34 @@ export function IconShield({ className }: IconProps) {
     </svg>
   );
 }
+
+// Icônes de la barre de navigation principale (voir nav-bar.tsx). Couleur
+// toujours héritée (currentColor) : le vert carbone est réservé au bénéfice
+// mesuré (règle du design system), jamais à une icône de navigation neutre.
+export function IconRoute({ className }: IconProps) {
+  return (
+    <svg {...commonProps} className={className}>
+      <circle cx="6" cy="6" r="2.5" />
+      <circle cx="18" cy="18" r="2.5" />
+      <path d="M6 8.5V13a4 4 0 004 4h4" />
+    </svg>
+  );
+}
+
+export function IconLeaf({ className }: IconProps) {
+  return (
+    <svg {...commonProps} className={className}>
+      <path d="M6 20C4 12 9 4 20 4c0 11-8 16-14 16z" />
+      <path d="M6 20c1-4 4-8 10-11" />
+    </svg>
+  );
+}
+
+export function IconUser({ className }: IconProps) {
+  return (
+    <svg {...commonProps} className={className}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c1.2-4 4-6 7-6s5.8 2 7 6" />
+    </svg>
+  );
+}
