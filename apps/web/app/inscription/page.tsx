@@ -22,6 +22,9 @@ export default function InscriptionPage() {
         <p className="auth-footer">
           Déjà un compte ? <Link href="/connexion">Se connecter</Link>
         </p>
+        <p className="auth-footer">
+          <Link href="/mentions-legales">Mentions légales</Link>
+        </p>
       </div>
     </main>
   );

@@ -24,6 +24,9 @@ export default function ConnexionPage() {
           Pas encore de compte ?{' '}
           <Link href="/inscription">Créer un compte</Link>
         </p>
+        <p className="auth-footer">
+          <Link href="/mentions-legales">Mentions légales</Link>
+        </p>
       </div>
     </main>
   );
