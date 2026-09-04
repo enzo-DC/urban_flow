@@ -28,9 +28,11 @@ test('cliquer sur un arret affiche un popup avec les prochains passages', async 
 
   await page.getByRole('button', { name: 'Rechercher un itinéraire' }).click();
   await page.locator('.trip-card').first().waitFor({ state: 'visible' });
-  await page.locator('.trip-card').first().click();
 
-  // Laisse le temps a fitBounds + moveend + chargement des arrets.
+  // Choisir un itineraire n'est plus necessaire pour voir les arrets : la
+  // carte affiche desormais un apercu du premier resultat des la recherche
+  // (voir choisirItineraire dans planificateur-form.tsx). Laisse le temps a
+  // fitBounds + moveend + chargement des arrets.
   await page.locator('.arret-point').first().waitFor({ state: 'attached' });
 
   // Un arret pris au hasard peut se trouver sous les controles zoom/geoloc

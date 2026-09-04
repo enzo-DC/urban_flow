@@ -28,16 +28,20 @@ test("le detail de l'itineraire selectionne liste un segment par mode", async ({
 
   await page.getByRole('button', { name: 'Rechercher un itinéraire' }).click();
   await page.locator('.trip-card').first().waitFor({ state: 'visible' });
-  await page.locator('.trip-card').first().click();
 
-  const detail = page.locator('.trip-detail');
-  await expect(detail).toBeVisible();
-
+  // Compte les modes sur la carte AVANT de cliquer : le clic navigue vers
+  // /planificateur/trajet, ou la carte de resultat n'existe plus.
   const modesDansLaCarte = await page
     .locator('.trip-card')
     .first()
     .locator('.trip-mode')
     .count();
+  await page.locator('.trip-card').first().click();
+
+  await page.waitForURL('/planificateur/trajet');
+  const detail = page.locator('.trip-detail');
+  await expect(detail).toBeVisible();
+
   const modesDansLeDetail = await detail.locator('.trip-detail-row').count();
   expect(modesDansLeDetail).toBe(modesDansLaCarte);
 });

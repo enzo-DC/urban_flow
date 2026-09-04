@@ -41,6 +41,14 @@ test('inscription puis planification puis consultation de l’impact carbone', a
   await expect(resultats.first()).toBeVisible({ timeout: 15_000 });
   await resultats.first().click();
 
+  // Choisir un itineraire navigue vers la page dediee « trajet complet »
+  // (etape par etape, prochains passages) plutot que de rester sur le
+  // planificateur.
+  await page.waitForURL('/planificateur/trajet');
+  await expect(page.locator('.trip-detail-step').first()).toBeVisible({
+    timeout: 15_000,
+  });
+
   await page.getByRole('button', { name: 'J’ai fait ce trajet' }).click();
 
   await page.waitForURL('/mon-impact');

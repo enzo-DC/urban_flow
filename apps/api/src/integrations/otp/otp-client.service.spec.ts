@@ -134,6 +134,148 @@ describe('OtpClientService', () => {
     expect(result[0].legs[0].arriveeNom).toBe('Basso Cambo');
   });
 
+  it('transmet ligne/direction/horaire pour un leg de transport en commun (embarquement a un vrai arret)', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse({
+        data: {
+          planConnection: {
+            edges: [
+              {
+                node: {
+                  duration: 225,
+                  legs: [
+                    {
+                      mode: 'SUBWAY',
+                      duration: 225,
+                      distance: 2876.26,
+                      from: {
+                        lat: 43.6045057,
+                        lon: 1.4455115,
+                        name: 'Capitole',
+                        stop: { gtfsId: '1:stop_point:SP_1912' },
+                        departure: {
+                          scheduledTime: '2026-09-04T18:06:03+02:00',
+                        },
+                      },
+                      to: { lat: 43.5932124, lon: 1.4192796, name: 'Arènes' },
+                      route: { gtfsId: '1:line:A', shortName: 'A' },
+                      headsign: 'Basso Cambo',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    const client = new OtpClientService(buildConfig());
+    const result = await client.planifier(
+      { latitude: 43.6045057, longitude: 1.4455115 },
+      { latitude: 43.5932124, longitude: 1.4192796 },
+    );
+
+    expect(result[0].legs[0].ligne).toBe('A');
+    expect(result[0].legs[0].direction).toBe('Basso Cambo');
+    expect(result[0].legs[0].departHeure).toBe('2026-09-04T18:06:03+02:00');
+  });
+
+  it('n’attribue ni ligne ni horaire a un leg de marche (from.stop absent)', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse({
+        data: {
+          planConnection: {
+            edges: [
+              {
+                node: {
+                  duration: 100,
+                  legs: [
+                    {
+                      mode: 'WALK',
+                      duration: 100,
+                      distance: 150,
+                      from: { lat: 0, lon: 0, name: 'Origin', stop: null },
+                      to: { lat: 0, lon: 0, name: 'Capitole' },
+                      // Meme si un headsign/route trainait par erreur cote OTP,
+                      // l'absence de from.stop doit rester decisive.
+                      route: { gtfsId: '1:line:A', shortName: 'A' },
+                      headsign: 'Ne doit pas apparaitre',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    const client = new OtpClientService(buildConfig());
+    const result = await client.planifier(
+      { latitude: 0, longitude: 0 },
+      { latitude: 0, longitude: 0 },
+    );
+
+    expect(result[0].legs[0].ligne).toBeUndefined();
+    expect(result[0].legs[0].direction).toBeUndefined();
+    expect(result[0].legs[0].departHeure).toBeUndefined();
+  });
+
+  it('convertit les etapes de marche pas a pas en instructions francaises', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse({
+        data: {
+          planConnection: {
+            edges: [
+              {
+                node: {
+                  duration: 100,
+                  legs: [
+                    {
+                      mode: 'WALK',
+                      duration: 100,
+                      distance: 150,
+                      from: { lat: 0, lon: 0, name: 'Origin', stop: null },
+                      to: { lat: 0, lon: 0, name: 'Destination', stop: null },
+                      steps: [
+                        {
+                          streetName: 'path',
+                          relativeDirection: 'DEPART',
+                          distance: 20.74,
+                        },
+                        {
+                          streetName: 'Rue Pargaminières',
+                          relativeDirection: 'LEFT',
+                          distance: 128.54,
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    const client = new OtpClientService(buildConfig());
+    const result = await client.planifier(
+      { latitude: 0, longitude: 0 },
+      { latitude: 0, longitude: 0 },
+    );
+
+    expect(result[0].legs[0].etapes).toEqual([
+      { direction: 'Départ', rue: 'chemin', distanceMetres: 20.74 },
+      {
+        direction: 'Tournez à gauche',
+        rue: 'Rue Pargaminières',
+        distanceMetres: 128.54,
+      },
+    ]);
+  });
+
   it('transmet preferences.accessibility.wheelchair.enabled selon le parametre accessible', async () => {
     let corpsRecu: { variables: { preferences: unknown } } | undefined;
     global.fetch = jest.fn((_url: string, init: RequestInit) => {

@@ -120,6 +120,10 @@ export class ItinerairesService {
       trace: leg.trace,
       departNom: leg.departNom,
       arriveeNom: leg.arriveeNom,
+      ligne: leg.ligne,
+      direction: leg.direction,
+      departHeure: leg.departHeure,
+      etapes: leg.etapes,
     }));
 
     return {
