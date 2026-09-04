@@ -274,4 +274,79 @@ describe('OtpClientService', () => {
 
     expect(result).toEqual([]);
   });
+
+  describe('arretsDansZone', () => {
+    it('convertit les arrets OTP, retire le prefixe de feed et traduit le mode', async () => {
+      global.fetch = jest.fn((url: string) => {
+        expect(url).toBe(GRAPHQL_URL);
+        return Promise.resolve(
+          jsonResponse({
+            data: {
+              stopsByBbox: [
+                {
+                  gtfsId: '1:stop_point:SP_1595',
+                  name: 'Concorde',
+                  lat: 43.6103122,
+                  lon: 1.4436469,
+                  vehicleMode: 'BUS',
+                },
+                {
+                  gtfsId: '1:stop_point:SP_2676',
+                  name: "Jeanne d'Arc",
+                  lat: 43.6091267,
+                  lon: 1.4457313,
+                  vehicleMode: 'SUBWAY',
+                },
+              ],
+            },
+          }),
+        );
+      });
+
+      const client = new OtpClientService(buildConfig());
+      const result = await client.arretsDansZone(43.6, 1.44, 43.62, 1.45);
+
+      expect(result).toEqual([
+        {
+          id: 'stop_point:SP_1595',
+          nom: 'Concorde',
+          position: { latitude: 43.6103122, longitude: 1.4436469 },
+          mode: 'bus',
+        },
+        {
+          id: 'stop_point:SP_2676',
+          nom: "Jeanne d'Arc",
+          position: { latitude: 43.6091267, longitude: 1.4457313 },
+          mode: 'metro',
+        },
+      ]);
+    });
+
+    it('plafonne le nombre d’arrets renvoyes (carte lisible a un zoom large)', async () => {
+      const stops = Array.from({ length: 250 }, (_, i) => ({
+        gtfsId: `1:stop_point:SP_${i}`,
+        name: `Arret ${i}`,
+        lat: 43.6,
+        lon: 1.44,
+        vehicleMode: 'BUS',
+      }));
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(jsonResponse({ data: { stopsByBbox: stops } }));
+
+      const client = new OtpClientService(buildConfig());
+      const result = await client.arretsDansZone(43.5, 1.4, 43.7, 1.5);
+
+      expect(result).toHaveLength(200);
+    });
+
+    it('renvoie un tableau vide sans exception si OTP est indisponible', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+
+      const client = new OtpClientService(buildConfig());
+      const result = await client.arretsDansZone(0, 0, 0, 0);
+
+      expect(result).toEqual([]);
+    });
+  });
 });

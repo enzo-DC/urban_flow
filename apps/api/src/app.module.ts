@@ -6,6 +6,7 @@ import { minutes, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ArretsModule } from './arrets/arrets.module';
 import { AuthModule } from './auth/auth.module';
 import { CarboneModule } from './carbone/carbone.module';
 import { GamificationModule } from './gamification/gamification.module';
@@ -40,6 +41,7 @@ import { UsersModule } from './users/users.module';
     IntegrationsModule,
     ItinerairesModule,
     LieuxModule,
+    ArretsModule,
     TrajetsModule,
     CarboneModule,
     GamificationModule,

@@ -43,3 +43,16 @@ export interface OtpGraphQlResponse {
   };
   errors?: { message: string }[];
 }
+
+export interface OtpGraphQlStopNode {
+  gtfsId: string;
+  name: string;
+  lat: number;
+  lon: number;
+  vehicleMode: string | null;
+}
+
+export interface OtpGraphQlStopsResponse {
+  data?: { stopsByBbox: OtpGraphQlStopNode[] };
+  errors?: { message: string }[];
+}
