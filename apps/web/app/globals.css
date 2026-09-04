@@ -582,6 +582,24 @@ button {
   justify-content: center;
 }
 
+/* Arrets de transport en commun (bus/metro/tram, issus d'OTP) : simples
+   points decoratifs, jamais interactifs (pas de bouton/focus) — a cette
+   densite sur la carte, des cibles tactiles de 48px les rendraient
+   illisibles en se chevauchant. Coherent avec les marqueurs depart/arrivee,
+   deja non interactifs eux aussi. Une seule couleur (primaire) pour tout
+   transport en commun, sans distinction bus/metro/tram : c'est deja la
+   convention du trace d'itineraire lui-meme (COULEUR_MODE) — ne pas
+   improviser une nouvelle teinte hors des roles definis par le design
+   system (le vert reste reserve au carbone, l'orange a l'alerte). */
+.arret-point {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 1.5px solid var(--white);
+  box-shadow: 0 0 0 1px rgba(15, 27, 38, 0.25);
+}
+
 /* Les boutons de controle MapLibre par defaut font 29px (zoom, geoloc) —
    sous la cible tactile minimale de 48px imposee par le design system.
    Corrige ici plutot que de re-styliser chaque controle un par un.

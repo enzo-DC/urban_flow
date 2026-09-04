@@ -1,6 +1,10 @@
 'use client';
 
-import type { Itineraire, LieuGeocode } from '@urbanflow/shared';
+import type {
+  ArretTransport,
+  Itineraire,
+  LieuGeocode,
+} from '@urbanflow/shared';
 import {
   GeolocateControl,
   LngLatBounds,
@@ -66,6 +70,10 @@ export function CartePlanificateur({
   const conteneurRef = useRef<HTMLDivElement>(null);
   const carteRef = useRef<MapLibreMap | null>(null);
   const marqueursRef = useRef<Marker[]>([]);
+  const arretsMarqueursRef = useRef<Marker[]>([]);
+  // Ecarte une reponse d'arrets perimee (recherche precedente) qui
+  // arriverait apres une nouvelle : seule la derniere requete en vol compte.
+  const arretsRequeteIdRef = useRef(0);
 
   useEffect(() => {
     if (!conteneurRef.current) return;
@@ -179,8 +187,49 @@ export function CartePlanificateur({
         hasBounds = true;
       }
 
+      for (const marqueur of arretsMarqueursRef.current) marqueur.remove();
+      arretsMarqueursRef.current = [];
+
       if (hasBounds) {
         carte.fitBounds(bounds, { padding: 56, maxZoom: 15, duration: 400 });
+        // Attend la fin de l'animation pour interroger exactement la zone
+        // visible a l'ecran (carte.getBounds()), pas la zone approximative
+        // avant fitBounds.
+        const requeteId = ++arretsRequeteIdRef.current;
+        carte.once('moveend', () => {
+          void chargerArrets(carte, requeteId);
+        });
+      }
+    }
+
+    async function chargerArrets(carte: MapLibreMap, requeteId: number) {
+      const zone = carte.getBounds();
+      const params = new URLSearchParams({
+        minLat: String(zone.getSouth()),
+        minLon: String(zone.getWest()),
+        maxLat: String(zone.getNorth()),
+        maxLon: String(zone.getEast()),
+      });
+      try {
+        const res = await fetch(`/api/arrets?${params.toString()}`);
+        if (!res.ok) return;
+        const arrets = (await res.json()) as ArretTransport[];
+        // Une recherche plus recente a demarre entre-temps : cette reponse
+        // ne correspond plus a la zone actuelle, on l'ignore.
+        if (requeteId !== arretsRequeteIdRef.current) return;
+
+        for (const marqueur of arretsMarqueursRef.current) marqueur.remove();
+        arretsMarqueursRef.current = arrets.map((arret) => {
+          const point = document.createElement('div');
+          point.className = 'arret-point';
+          point.title = arret.nom;
+          return new Marker({ element: point })
+            .setLngLat([arret.position.longitude, arret.position.latitude])
+            .addTo(carte);
+        });
+      } catch {
+        // Degradation silencieuse : les arrets sont un complement visuel,
+        // jamais un blocage de la planification d'itineraire elle-meme.
       }
     }
 
