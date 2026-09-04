@@ -42,7 +42,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     response.cookies.set(
       REFRESH_COOKIE,
       refreshToken,
-      cookieOptions(REFRESH_TOKEN_MAX_AGE, '/api/auth'),
+      cookieOptions(REFRESH_TOKEN_MAX_AGE),
     );
   }
   return response;

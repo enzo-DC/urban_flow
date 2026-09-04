@@ -14,6 +14,17 @@ export const REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 7;
 export const ACCESS_COOKIE = 'access_token';
 export const REFRESH_COOKIE = 'refresh_token';
 
+// refresh_token vivait auparavant sous path=/api/auth (minimisation
+// deliberee de son exposition). Vrai bug trouve en conditions reelles : un
+// cookie scope a un chemin n'est envoye par le navigateur que pour les
+// requetes SOUS ce chemin — request.cookies()/cookies() sur /api/profil,
+// /profil, /mon-impact etc. ne le voyaient donc jamais, rendant tout
+// rafraichissement silencieux impossible en dehors d'un appel explicite a
+// /api/auth/refresh lui-meme. refresh_token reste httpOnly + Secure +
+// SameSite=strict (illisible en JS, jamais envoye cross-site) : l'elargir a
+// path=/ ne change pas sa surface d'attaque reelle, seulement sa visibilite
+// pour nos propres Route Handlers et Server Components.
+
 interface BackendResult {
   status: number;
   body: unknown;
@@ -91,7 +102,7 @@ export async function handleCredentialsAuth(
     response.cookies.set(
       REFRESH_COOKIE,
       refreshToken,
-      cookieOptions(REFRESH_TOKEN_MAX_AGE, '/api/auth'),
+      cookieOptions(REFRESH_TOKEN_MAX_AGE),
     );
   }
   return response;
@@ -99,5 +110,5 @@ export async function handleCredentialsAuth(
 
 export function clearAuthCookies(response: NextResponse): void {
   response.cookies.delete({ name: ACCESS_COOKIE, path: '/' });
-  response.cookies.delete({ name: REFRESH_COOKIE, path: '/api/auth' });
+  response.cookies.delete({ name: REFRESH_COOKIE, path: '/' });
 }
