@@ -12,4 +12,7 @@ export interface Segment {
   co2Grammes: number;
   /** Trace du segment, polyline encodée (format Google, précision 5), pour affichage carte. */
   trace?: string;
+  /** Nom du point de départ/arrivée (arrêt, adresse), pour affichage du détail. */
+  departNom?: string;
+  arriveeNom?: string;
 }

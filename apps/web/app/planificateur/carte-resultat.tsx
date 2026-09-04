@@ -1,6 +1,6 @@
 import type { Itineraire, ModeTransport } from '@urbanflow/shared';
 
-const LABEL_MODE: Record<ModeTransport, string> = {
+export const LABEL_MODE: Record<ModeTransport, string> = {
   marche: 'Marche',
   velo: 'Vélo',
   trottinette: 'Trottinette',

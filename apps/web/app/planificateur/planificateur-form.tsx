@@ -10,7 +10,7 @@ import type {
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { CarteResultat, formatDuree } from './carte-resultat';
+import { CarteResultat, formatDuree, LABEL_MODE } from './carte-resultat';
 import { ChampAdresse } from './champ-adresse';
 
 const CartePlanificateur = dynamic(
@@ -275,6 +275,30 @@ export function PlanificateurForm() {
             {formatDuree(itineraireSelectionne.dureeSecondes)},{' '}
             {itineraireSelectionne.co2Grammes} g de CO2.
           </p>
+
+          <ul className="trip-detail" aria-label="Détail de l'itinéraire">
+            {itineraireSelectionne.segments.map((segment, index) => (
+              <li key={index} className="trip-detail-row">
+                <span className={`trip-mode trip-mode-${segment.mode}`}>
+                  {LABEL_MODE[segment.mode]}
+                </span>
+                {/* Uniquement pour le transport en commun : verifie en
+                    conditions reelles (production) que les segments a pied
+                    reçoivent des noms generiques peu utiles ("Origin",
+                    "Destination", ou le meme nom aux deux bouts pour une
+                    correspondance a l'interieur d'une station), alors que
+                    bus/metro/tram ont toujours de vrais noms d'arret. */}
+                {segment.mode !== 'marche' &&
+                  segment.departNom &&
+                  segment.arriveeNom && (
+                    <span className="trip-detail-trajet">
+                      {segment.departNom} → {segment.arriveeNom}
+                    </span>
+                  )}
+              </li>
+            ))}
+          </ul>
+
           <button
             type="button"
             className="btn btn-primary btn-block"
