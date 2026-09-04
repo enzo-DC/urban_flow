@@ -102,6 +102,54 @@ describe('YegoScooterProvider', () => {
     );
   });
 
+  it('transmet l’autonomie restante (current_range_meters) quand le flux la fournit', async () => {
+    const redis = buildRedis(null);
+    global.fetch = jest.fn((url: string) => {
+      if (url === DISCOVERY_URL) {
+        return Promise.resolve(
+          jsonResponse({
+            data: {
+              fr: { feeds: [{ name: 'free_bike_status', url: STATUS_URL }] },
+            },
+          }),
+        );
+      }
+      if (url === STATUS_URL) {
+        return Promise.resolve(
+          jsonResponse({
+            ttl: 240,
+            data: {
+              bikes: [
+                {
+                  bike_id: 'a',
+                  lat: 43.6,
+                  lon: 1.44,
+                  is_reserved: false,
+                  is_disabled: false,
+                  current_range_meters: 41500,
+                },
+              ],
+            },
+          }),
+        );
+      }
+      return Promise.reject(new Error(`URL inattendue : ${url}`));
+    });
+
+    const provider = new YegoScooterProvider(redis, buildConfig());
+    const result = await provider.disponibilites();
+
+    expect(result).toEqual([
+      {
+        id: 'a',
+        mode: 'scooter',
+        position: { latitude: 43.6, longitude: 1.44 },
+        disponible: 1,
+        autonomieMetres: 41500,
+      },
+    ]);
+  });
+
   it('renvoie un tableau vide sans exception si le flux est indisponible', async () => {
     const redis = buildRedis(null);
     global.fetch = jest.fn().mockRejectedValue(new Error('network down'));

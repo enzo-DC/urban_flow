@@ -82,6 +82,7 @@ export class YegoScooterProvider implements FournisseurMobilite {
         mode: 'scooter',
         position: { latitude: bike.lat, longitude: bike.lon },
         disponible: 1,
+        autonomieMetres: bike.current_range_meters,
       }));
 
     return { vehicules, ttlSeconds: status.ttl || FALLBACK_TTL_SECONDS };

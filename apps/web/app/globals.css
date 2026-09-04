@@ -610,11 +610,10 @@ button {
   outline-offset: 2px;
 }
 
-/* Stations velo/scooter en libre-service : meme logique non interactive que
-   .arret-point, mais assez grandes pour porter le nombre de vehicules
-   disponibles (deja recu avec la reponse de recherche, jamais interroge a
-   part). Couleur par mode reprise de COULEUR_MODE (carte-planificateur.tsx),
-   pas improvisee. */
+/* Stations velo/scooter en libre-service : cliquables (nom, adresse,
+   capacite ou autonomie), meme raisonnement que .arret-point pour la
+   taille sous 48px (densite de stations en ville). Couleur par mode
+   reprise de COULEUR_MODE (carte-planificateur.tsx), pas improvisee. */
 .station-point {
   min-width: 20px;
   height: 20px;
@@ -628,6 +627,11 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+}
+.station-point:focus-visible {
+  outline: 2px solid var(--primary-dark);
+  outline-offset: 2px;
 }
 
 /* Popup MapLibre (prochains passages d'un arret) — reprend les jetons du
@@ -680,6 +684,17 @@ button {
 }
 .popup-passage-minutes.popup-passage-alerte {
   color: var(--alert);
+}
+
+.popup-station-adresse {
+  font-size: 12px;
+  color: var(--slate);
+  margin-bottom: 4px;
+}
+.popup-station-detail {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 /* Les boutons de controle MapLibre par defaut font 29px (zoom, geoloc) —
